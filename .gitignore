@@ -14,8 +14,12 @@ state/*
 # Generated caches
 memory-wiki/.openclaw-wiki/cache/*
 !memory-wiki/.openclaw-wiki/cache/.gitkeep
+memory-wiki/reports/memory-report.md
+memory-wiki/reports/*.generated.md
 memory/_compiled/*
 !memory/_compiled/.gitkeep
+!memory/_compiled/STARTUP.md
+!memory/_compiled/INDEX.md
 
 # Dependencies
 node_modules/
