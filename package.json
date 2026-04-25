@@ -1,0 +1,15 @@
+{
+  "name": "personal-assistant-oc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw personal assistant workspace with file-based memory and no vector database.",
+  "type": "module",
+  "scripts": {
+    "memory:compile": "node scripts/compile-memory.mjs",
+    "memory:report": "node scripts/memory-report.mjs",
+    "memory:check": "node scripts/memory-report.mjs --check"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  }
+}

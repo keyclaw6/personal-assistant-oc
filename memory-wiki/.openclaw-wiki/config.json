@@ -1,0 +1,20 @@
+{
+  "vaultMode": "isolated",
+  "renderMode": "obsidian",
+  "search": {
+    "backend": "local",
+    "corpus": "wiki"
+  },
+  "context": {
+    "includeCompiledDigestPrompt": true
+  },
+  "render": {
+    "preserveHumanBlocks": true,
+    "createBacklinks": true,
+    "createDashboards": true
+  },
+  "storage": {
+    "vectorDatabase": false,
+    "embeddingProvider": null
+  }
+}

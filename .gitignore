@@ -1,0 +1,27 @@
+# Local secrets and runtime state
+.env
+.env.*
+*.local
+*.secret
+*.key
+*.pem
+
+# OpenClaw machine state
+.openclaw/
+state/*
+!state/.gitkeep
+
+# Generated caches
+memory-wiki/.openclaw-wiki/cache/*
+!memory-wiki/.openclaw-wiki/cache/.gitkeep
+memory/_compiled/*
+!memory/_compiled/.gitkeep
+
+# Dependencies
+node_modules/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
