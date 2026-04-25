@@ -70,9 +70,10 @@ Run:
 npm run memory:report
 npm run memory:maintain
 npm run memory:check
+npm run memory:smoke
 ```
 
-Review stale pages, contested claims, low-confidence facts, open questions, malformed private blocks, and possible secrets.
+Review stale pages, contested claims, low-confidence facts, open questions, malformed private blocks, possible secrets, and capture/privacy smoke-test failures.
 
 ## 6. Resolve Conflicts
 

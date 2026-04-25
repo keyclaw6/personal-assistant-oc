@@ -10,6 +10,7 @@
     "memory:report": "node scripts/memory-report.mjs",
     "memory:maintain": "node scripts/maintenance-prompt.mjs",
     "memory:check": "node scripts/memory-report.mjs --check",
+    "memory:smoke": "node scripts/smoke-test.mjs",
     "memory:refresh": "npm run memory:compile && npm run memory:report && npm run memory:maintain"
   },
   "engines": {

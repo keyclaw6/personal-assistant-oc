@@ -15,6 +15,7 @@
 - Report stale/conflicting memory: `npm run memory:report`
 - Refresh compile/report/maintenance prompt: `npm run memory:refresh`
 - Check memory health in CI/local scripts: `npm run memory:check`
+- Smoke test capture/privacy behavior: `npm run memory:smoke`
 
 ## Search
 

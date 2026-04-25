@@ -21,16 +21,17 @@ openclaw dashboard
 
 ## Optional Native Memory Wiki Plugin
 
-OpenClaw 2026.4.23 ships a disabled `memory-wiki` plugin, but this local CLI did not expose a top-level `openclaw wiki` command during setup. This repo therefore works without that command.
+This repo works without a native `openclaw wiki` command. If your OpenClaw build exposes one, enable the plugin and point it at `memory-wiki/`.
 
-When the native command is available, enable the plugin and point it at `memory-wiki/`.
+Either way, the local file scripts remain the baseline memory maintenance path.
 
 ## Daily Memory Commands
 
 ```powershell
 npm run memory:capture -- --type observation --title "Short title" --summary "What changed" --source conversation
-npm run memory:compile
+npm run memory:refresh
 npm run memory:check
+npm run memory:smoke
 ```
 
 The always-loaded memory entrypoint is `MEMORY.md`; it points the agent at `memory/_compiled/SESSION_INDEX.md` before any larger memory files.

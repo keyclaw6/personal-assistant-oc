@@ -17,9 +17,12 @@ The design intentionally keeps memory inspectable and version-controlled. OpenCl
 
 ## Quick Start
 
+Requires Node `>=22.14.0`.
+
 ```powershell
 npm run memory:refresh
 npm run memory:check
+npm run memory:smoke
 ```
 
 To use this repo as the active OpenClaw workspace:
@@ -44,7 +47,7 @@ openclaw dashboard
 4. If a new fact conflicts with old memory, create a file under `memory/conflicts/` instead of overwriting.
 5. Run `npm run memory:refresh` after meaningful changes.
 6. Use `memory/_compiled/SESSION_INDEX.md` as the default startup scan.
-7. Run `npm run memory:check` before committing or trusting startup memory.
+7. Run `npm run memory:check` and `npm run memory:smoke` before committing or trusting startup memory.
 
 ## No Vector DB Policy
 

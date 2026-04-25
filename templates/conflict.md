@@ -1,7 +1,17 @@
+---
+id: conflict.short-name
+status: open
+created_at: YYYY-MM-DD
+---
+
 # Memory Conflict
 
 Date: YYYY-MM-DD
 Status: open
+
+Affected pages:
+
+- `memory-wiki/...`
 
 ## Conflict
 

@@ -19,6 +19,12 @@ One paragraph that is safe to include in compiled startup memory.
 
 - Fact with evidence.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| area.short-name.claim | draft | 0.50 | source-name | One durable claim in a sentence. |
+
 ## Open Questions
 
 - Question to resolve later.

@@ -12,6 +12,12 @@ Get-Content memory/_compiled/SESSION_INDEX.md
 
 This file tells the assistant what exists, where to fetch it, status, confidence, and approximate read cost.
 
+If the index is missing or stale after edits, run:
+
+```powershell
+npm run memory:refresh
+```
+
 ## Layer 2 - Canonical Page
 
 Read one or two relevant pages under `memory-wiki/`.
@@ -35,3 +41,5 @@ Get-Content memory/daily/2026-04-25.md
 ## Why This Shape
 
 This borrows Claude-Mem's key idea: context is expensive, so the assistant should see an index and choose what to fetch. It avoids the opposite failure mode where a huge memory blob is loaded on every session.
+
+Stop once there is enough context to act. More memory is not better if it does not change the answer.
