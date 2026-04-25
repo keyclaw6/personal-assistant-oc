@@ -142,7 +142,8 @@ async function listMarkdownFiles(dirName) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => path.join(dirName, entry.name));
+    .map((entry) => path.join(dirName, entry.name))
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function mdCell(value) {
@@ -198,6 +199,7 @@ async function main() {
     "2. Read only the one or two source pages that match the current task.",
     "3. Search raw logs under `memory/` only when the wiki does not answer the question.",
     "4. Keep new durable facts in `memory/inbox/` until they can be promoted with evidence.",
+    "5. After memory edits, run `npm run memory:refresh` and check the report.",
     "",
     "## Page Index",
     "",

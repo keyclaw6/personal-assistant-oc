@@ -7,12 +7,15 @@ const wikiDir = path.join(root, "memory-wiki");
 const reportsDir = path.join(wikiDir, "reports");
 const compiledDir = path.join(root, "memory", "_compiled");
 const checkMode = process.argv.includes("--check");
+const defaultTimeZone = process.env.PERSONAL_ASSISTANT_TZ || "Europe/Copenhagen";
 
 const ignoredDirs = new Set(["reports", "_views", "_attachments", ".openclaw-wiki"]);
 const requiredCompiled = ["SESSION_INDEX.md", "STARTUP.md", "INDEX.md", "CLAIMS.jsonl"];
-const secretPatterns = [
-  /gho_[A-Za-z0-9_]{20,}/,
-  /sk-[A-Za-z0-9_-]{20,}/,
+const highConfidenceSecretPatterns = [
+  /\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/,
+  /\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}\b/
+];
+const possibleSecretPatterns = [
   /\b[A-Za-z0-9_-]{32,}\b/
 ];
 
@@ -26,7 +29,8 @@ async function exists(filePath) {
 }
 
 async function walk(dir, prefix = "") {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const entries = (await fs.readdir(dir, { withFileTypes: true }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const files = [];
 
   for (const entry of entries) {
@@ -100,6 +104,9 @@ function parseClaims(body, page) {
   const lines = claimsSection.split(/\r?\n/).filter((line) => line.trim().startsWith("|"));
   if (lines.length < 3) return [];
 
+  const separator = splitTableRow(lines[1] || "").join("");
+  if (!/^[-:]+$/.test(separator)) return [];
+
   return lines
     .slice(2)
     .map(splitTableRow)
@@ -117,9 +124,18 @@ function parseClaims(body, page) {
 
 function daysUntil(dateString) {
   if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return null;
-  const today = new Date();
+  const today = new Date(`${localDateString()}T00:00:00Z`);
   const target = new Date(`${dateString}T00:00:00Z`);
   return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+function localDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: defaultTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
 }
 
 function list(items, formatter) {
@@ -160,6 +176,7 @@ async function main() {
   const markers = [];
   const privateLeaks = [];
   const unclosedPrivateBlocks = [];
+  const highConfidenceSecrets = [];
   const possibleSecrets = [];
 
   for (const file of requiredCompiled) {
@@ -203,10 +220,16 @@ async function main() {
       unclosedPrivateBlocks.push({ relativePath, title });
     }
 
-    for (const pattern of secretPatterns) {
-      if (pattern.test(sanitizePrivate(raw))) {
-        possibleSecrets.push({ relativePath, title });
-        break;
+    const sanitizedRaw = sanitizePrivate(raw);
+    const hasHighConfidenceSecret = highConfidenceSecretPatterns.some((pattern) => pattern.test(sanitizedRaw));
+    if (hasHighConfidenceSecret) {
+      highConfidenceSecrets.push({ relativePath, title });
+    } else {
+      for (const pattern of possibleSecretPatterns) {
+        if (pattern.test(sanitizedRaw)) {
+          possibleSecrets.push({ relativePath, title });
+          break;
+        }
       }
     }
   }
@@ -239,7 +262,8 @@ async function main() {
     `- Review markers: ${markers.length}`,
     `- Private blocks in source pages: ${privateLeaks.length}`,
     `- Unclosed private blocks: ${unclosedPrivateBlocks.length}`,
-    `- Possible secrets outside private blocks: ${possibleSecrets.length}`,
+    `- High-confidence secrets outside private blocks: ${highConfidenceSecrets.length}`,
+    `- Possible long tokens outside private blocks: ${possibleSecrets.length}`,
     "",
     "## Missing Compiled Artifacts",
     "",
@@ -277,9 +301,13 @@ async function main() {
     "",
     list(unclosedPrivateBlocks, (item) => `- unclosed private block in \`${item.relativePath}\``),
     "",
-    "### Possible Secrets Outside Private Blocks",
+    "### High-Confidence Secrets Outside Private Blocks",
     "",
-    list(possibleSecrets, (item) => `- possible secret in \`${item.relativePath}\``),
+    list(highConfidenceSecrets, (item) => `- likely secret in \`${item.relativePath}\``),
+    "",
+    "### Possible Long Tokens Outside Private Blocks",
+    "",
+    list(possibleSecrets, (item) => `- long token-like value in \`${item.relativePath}\``),
     ""
   ].join("\n");
 
@@ -328,7 +356,7 @@ async function main() {
     ...missingMetadata.map((item) => item.relativePath),
     ...claimsMissingEvidence.map((claim) => claim.id),
     ...unclosedPrivateBlocks.map((item) => item.relativePath),
-    ...possibleSecrets.map((item) => item.relativePath)
+    ...highConfidenceSecrets.map((item) => item.relativePath)
   ];
 
   if (checkMode && hardFailures.length > 0) {

@@ -34,7 +34,7 @@ Safe to update or regenerate without asking:
 - `memory/inbox/`
 - `memory/conflicts/`
 - `memory-wiki/WORKING.md`
-- `memory-wiki/reports/`
+- generated memory reports
 - `memory/_compiled/`
 
 Ask or clearly state what you changed when editing stable memory:
@@ -49,7 +49,7 @@ Ask or clearly state what you changed when editing stable memory:
 - `memory-wiki/concepts/`
 - `memory-wiki/syntheses/`
 
-Never edit generated ignored reports by hand. Change source memory, then rerun `npm run memory:refresh`.
+Never hand-edit generated ignored reports. Change source memory, then rerun `npm run memory:refresh`. Human review notes in `memory-wiki/reports/` are normal source files.
 
 ## Conflict Handling
 

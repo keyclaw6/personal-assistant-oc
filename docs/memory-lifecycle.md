@@ -45,11 +45,13 @@ Durable pages should also include a `## Claims` table:
 
 ## 4. Compile
 
-Run:
+For normal use, run:
 
 ```powershell
-npm run memory:compile
+npm run memory:refresh
 ```
+
+Use `npm run memory:compile` only when you need to regenerate compiled context without reports.
 
 This generates:
 

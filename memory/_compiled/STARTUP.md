@@ -42,11 +42,11 @@ Kristian is the primary human for this assistant. Other people should only be ad
 
 ## Working
 
-Source: `WORKING.md` | ID: `working.current` | Cost: ~317 tokens
+Source: `WORKING.md` | ID: `working.current` | Cost: ~298 tokens
 
-- Current work: finish the polishing pass for the file-only memory system in Personal Assistant OC.
+- The file-only memory system is ready for an OpenClaw smoke test after model auth.
 - Keep retrieval index-first, keep stable memory concise, and regenerate compiled artifacts after edits.
-- Next practical test after model auth: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
+- Practical test: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
 
 ## Personal Assistant OC
 
@@ -62,7 +62,7 @@ File-based memory treats persistent assistant memory as structured text files. T
 
 ## Memory Architecture
 
-Source: `syntheses/memory-architecture.md` | ID: `synthesis.memory-architecture` | Cost: ~280 tokens
+Source: `syntheses/memory-architecture.md` | ID: `synthesis.memory-architecture` | Cost: ~419 tokens
 
 Personal Assistant OC uses a three-lane memory system:
 

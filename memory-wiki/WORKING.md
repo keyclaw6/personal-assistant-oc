@@ -13,24 +13,23 @@ sources:
 
 ## Startup Summary
 
-- Current work: finish the polishing pass for the file-only memory system in Personal Assistant OC.
+- The file-only memory system is ready for an OpenClaw smoke test after model auth.
 - Keep retrieval index-first, keep stable memory concise, and regenerate compiled artifacts after edits.
-- Next practical test after model auth: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
+- Practical test: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
 
 ## Current Focus
 
-Finish and publish the hardened `personal-assistant-oc` workspace so it is ready to test through OpenClaw.
+Test the hardened `personal-assistant-oc` workspace through OpenClaw after model authentication is available.
 
 ## Claims
 
 | ID | Status | Confidence | Evidence | Claim |
 | --- | --- | ---: | --- | --- |
-| working.memory-polish | active | 0.85 | current setup request | The current work is to polish the file-only memory system so it is robust and minimal. |
+| working.memory-polish | active | 0.85 | current setup request | The file-only memory system has been polished for robust, minimal operation. |
 
 ## Next Actions
 
-- Push this hardening pass.
-- After model auth is configured, start OpenClaw with this workspace.
+- Start OpenClaw with this workspace after model auth is configured.
 - Verify startup reads `MEMORY.md` and `memory/_compiled/SESSION_INDEX.md`.
 - Capture one real preference through the assistant and run `npm run memory:refresh`.
 

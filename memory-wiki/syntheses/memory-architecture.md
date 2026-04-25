@@ -26,6 +26,7 @@ Personal Assistant OC uses a three-lane memory system:
 | --- | --- | ---: | --- | --- |
 | synthesis.memory.three-lane | active | 0.85 | docs/memory-lifecycle.md | The architecture separates raw capture, curated wiki, and compiled context. |
 | synthesis.memory.index-first | active | 0.90 | docs/retrieval.md | The default retrieval path is index first, page second, raw logs last. |
+| synthesis.memory.robust-personal | active | 0.80 | 2026-04-25 architecture review | The architecture is robust for personal assistant memory when maintenance checks are run after edits. |
 
 ## Why This Beats A Flat MEMORY.md
 
@@ -34,3 +35,7 @@ A single memory file eventually becomes hard to search, hard to review, and easy
 ## Why This Avoids A Vector DB
 
 Personal memory has many facts that are small, named, and audit-sensitive. For this workload, deterministic filenames, headings, tags, and compiled digests provide enough retrieval without an opaque semantic store.
+
+## Robustness Boundary
+
+This is robust for personal memory, project continuity, preferences, decisions, and lightweight knowledge. It is not meant to be a high-volume event warehouse or compliance archive. If memory grows enough that filenames, headings, and compiled indexes stop being easy to scan, add a local index before adding hosted memory infrastructure.

@@ -58,10 +58,11 @@ function localDateParts(date = new Date()) {
     second: "2-digit",
     hour12: false
   }).format(date);
+  const millis = String(date.getMilliseconds()).padStart(3, "0");
   return {
     date: dateParts,
-    time: `${dateParts}T${timeParts}`,
-    compactTime: timeParts.replaceAll(":", "")
+    time: `${dateParts}T${timeParts}.${millis}`,
+    compactTime: `${timeParts.replaceAll(":", "")}${millis}`
   };
 }
 
@@ -91,7 +92,7 @@ async function main() {
   const title = args.title || args._ || "";
   const summary = args.summary || args.text || "";
 
-  if (!title || !summary) {
+  if (!String(title).trim() || !String(summary).trim()) {
     console.error("Usage: node scripts/capture-memory.mjs --type preference --title \"Short title\" --summary \"What happened\" [--tags a,b] [--source conversation] [--confidence 0.7]");
     process.exit(1);
   }
@@ -110,7 +111,7 @@ async function main() {
     .filter(Boolean);
   const id = `${date.replaceAll("-", "")}-${compactTime}-${slugify(title)}`;
   const safeTitle = sanitizePrivate(title).trim().slice(0, 120);
-  const safeSummary = sanitizePrivate(summary);
+  const safeSummary = sanitizePrivate(summary).trim();
 
   const event = {
     id,
@@ -142,6 +143,7 @@ async function main() {
       `confidence: ${confidence}`,
       `source: ${source}`,
       `created_at: ${time}`,
+      `time_zone: ${defaultTimeZone}`,
       "---",
       "",
       `# ${safeTitle}`,
