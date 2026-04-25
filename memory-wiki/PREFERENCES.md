@@ -16,6 +16,14 @@ sources:
 
 Prefer a smart file structure for memory over a vector database or hosted memory service. The assistant should need only a model provider credential, not separate memory API keys.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| preference.memory.no-vector-db | active | 0.95 | current setup request | Use file-based memory without a vector database by default. |
+| preference.memory.no-extra-api-keys | active | 0.90 | current setup request | Do not require a separate memory or embedding API key for baseline memory. |
+| preference.memory.conflicts-visible | active | 0.85 | current setup request | Surface memory conflicts instead of silently overwriting them. |
+
 ## Memory Preferences
 
 - File-based memory by default.

@@ -15,6 +15,13 @@ sources:
 
 Kristian wants a personal OpenClaw assistant with durable memory that is file-based, inspectable, Git-backed, and cheap to operate. The memory system should avoid vector databases and extra API keys by default.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| profile.kristian.file-memory-goal | active | 0.85 | current setup request | Kristian wants the assistant memory to be file-based, inspectable, and low-infrastructure. |
+| profile.kristian.timezone | active | 0.80 | USER.md | Kristian's working timezone is Europe/Copenhagen. |
+
 ## Known Facts
 
 - Kristian is using Windows with PowerShell.

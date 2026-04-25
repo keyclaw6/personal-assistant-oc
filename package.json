@@ -5,9 +5,12 @@
   "description": "OpenClaw personal assistant workspace with file-based memory and no vector database.",
   "type": "module",
   "scripts": {
+    "memory:capture": "node scripts/capture-memory.mjs",
     "memory:compile": "node scripts/compile-memory.mjs",
     "memory:report": "node scripts/memory-report.mjs",
-    "memory:check": "node scripts/memory-report.mjs --check"
+    "memory:maintain": "node scripts/maintenance-prompt.mjs",
+    "memory:check": "node scripts/memory-report.mjs --check",
+    "memory:refresh": "npm run memory:compile && npm run memory:report && npm run memory:maintain"
   },
   "engines": {
     "node": ">=22.14.0"

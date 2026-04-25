@@ -4,11 +4,13 @@ This note compares the resources researched for Personal Assistant OC.
 
 ## Recommendation
 
-Use OpenClaw Memory Wiki plus a stricter local file lifecycle:
+Use OpenClaw Memory Wiki plus a stricter local file lifecycle and Claude-Mem-style progressive disclosure:
 
 - raw logs in `memory/`
 - curated Markdown pages in `memory-wiki/`
-- compiled startup digest in `memory/_compiled/`
+- a tiny always-loaded `MEMORY.md`
+- a compiled `SESSION_INDEX.md` that shows what exists and approximate read cost
+- a fuller compiled startup digest in `memory/_compiled/STARTUP.md`
 - generated reports for stale, contested, low-confidence, and missing-metadata memory
 
 Do not add a vector database by default.
@@ -77,6 +79,8 @@ Limits for this project:
 Decision:
 
 - Borrow the lifecycle ideas: capture, promote, compile, review.
+- Borrow progressive disclosure: index first, fetch details only when useful.
+- Borrow privacy tags: `<private>...</private>` is stripped from compiled artifacts.
 - Do not adopt the storage architecture.
 
 ## Cognee File-Based AI Memory
@@ -122,11 +126,13 @@ Decision:
 
 ## Final Architecture
 
-Use file memory with four layers:
+Use file memory with six layers:
 
-1. Capture: JSONL events and daily notes.
-2. Triage: inbox and conflict files.
-3. Canon: memory-wiki pages with metadata.
-4. Context: compiled startup digest and index.
+1. Load gate: `MEMORY.md`, kept intentionally tiny.
+2. Index: `memory/_compiled/SESSION_INDEX.md`.
+3. Capture: JSONL events and daily notes.
+4. Triage: inbox and conflict files.
+5. Canon: memory-wiki pages with metadata and claim rows.
+6. Context: compiled startup digest only when broader context is needed.
 
 This gives most of the practical benefit of memory systems while keeping the stack simple enough to understand and version-control.

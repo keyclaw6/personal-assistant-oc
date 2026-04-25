@@ -6,7 +6,9 @@
     "corpus": "wiki"
   },
   "context": {
-    "includeCompiledDigestPrompt": true
+    "includeCompiledDigestPrompt": true,
+    "defaultEntry": "../memory/_compiled/SESSION_INDEX.md",
+    "progressiveDisclosure": true
   },
   "render": {
     "preserveHumanBlocks": true,
@@ -16,5 +18,8 @@
   "storage": {
     "vectorDatabase": false,
     "embeddingProvider": null
+  },
+  "privacy": {
+    "stripPrivateTagsFromCompiledArtifacts": true
   }
 }

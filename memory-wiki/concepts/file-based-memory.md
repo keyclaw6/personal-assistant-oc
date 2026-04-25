@@ -15,6 +15,13 @@ sources:
 
 File-based memory treats persistent assistant memory as structured text files. The assistant captures raw observations, promotes stable facts into durable pages, and compiles compact digests for cheap startup context.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| concept.file-memory.transparent | active | 0.90 | docs/comparison.md | File-based memory is transparent, auditable, and model-agnostic. |
+| concept.file-memory.progressive | active | 0.85 | docs/retrieval.md | File-based memory should be retrieved progressively rather than loaded all at once. |
+
 ## Why It Fits This Assistant
 
 - Transparent: humans can inspect and edit memory.

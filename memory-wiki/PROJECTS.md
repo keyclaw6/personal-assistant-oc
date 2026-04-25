@@ -15,6 +15,13 @@ sources:
 
 Active project: build a personal OpenClaw assistant repository with a file-based memory system and no vector database dependency.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| project.personal-assistant-oc.active | active | 0.90 | current setup request | The active project is the `personal-assistant-oc` OpenClaw workspace. |
+| project.personal-assistant-oc.file-only | active | 0.95 | current setup request | The repository should work without a vector database or memory API service. |
+
 ## Active
 
 ### Personal Assistant OC

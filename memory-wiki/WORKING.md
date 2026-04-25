@@ -15,6 +15,12 @@ sources:
 
 Build and publish `personal-assistant-oc`, a private OpenClaw workspace repository with file-based memory.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| working.memory-polish | active | 0.85 | current setup request | The current work is to polish the file-only memory system so it is robust and minimal. |
+
 ## Next Actions
 
 - Compile startup memory.

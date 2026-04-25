@@ -15,6 +15,13 @@ sources:
 
 Kristian is the primary human for this assistant. Other people should only be added when useful and safe.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| person.kristian.primary-user | active | 0.85 | USER.md | Kristian Bilstrup is the primary user of this assistant. |
+| people.add-sparingly | active | 0.80 | privacy policy in AGENTS.md | Other people should be added only when useful and safe. |
+
 ## Kristian Bilstrup
 
 - Role: owner/user of this OpenClaw assistant.

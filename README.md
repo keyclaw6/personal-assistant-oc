@@ -20,6 +20,8 @@ The design intentionally keeps memory inspectable and version-controlled. OpenCl
 ```powershell
 npm run memory:compile
 npm run memory:report
+npm run memory:check
+npm run memory:refresh
 ```
 
 To use this repo as the active OpenClaw workspace:
@@ -42,8 +44,9 @@ openclaw dashboard
 2. Put uncertain items in `memory/inbox/`.
 3. Promote stable facts into `memory-wiki/` only when they have a source and confidence.
 4. If a new fact conflicts with old memory, create a file under `memory/conflicts/` instead of overwriting.
-5. Run `npm run memory:compile` after meaningful changes so `memory/_compiled/STARTUP.md` stays small and useful.
-6. Run `npm run memory:report` to refresh stale/conflict/low-confidence reports.
+5. Run `npm run memory:compile` after meaningful changes.
+6. Use `memory/_compiled/SESSION_INDEX.md` as the default startup scan.
+7. Run `npm run memory:report` to refresh stale/conflict/low-confidence reports.
 
 ## No Vector DB Policy
 
@@ -55,6 +58,8 @@ Retrieval is done with:
 - `rg`/plain text search
 - compact generated digests
 - LLM reading of the relevant files
+
+The default read path is progressive: `MEMORY.md` -> `memory/_compiled/SESSION_INDEX.md` -> one relevant page -> raw logs only if needed.
 
 Embeddings can be added later as a local JSONL index, but this repo deliberately ships without a vector database or embedding service.
 

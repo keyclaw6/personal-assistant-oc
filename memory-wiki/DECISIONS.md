@@ -13,6 +13,15 @@ sources:
 
 Append only. If a decision changes, add a new entry that supersedes the old one.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| decision.file-memory-default | active | 0.95 | 2026-04-25 decision | Personal Assistant OC uses Markdown and JSONL files as the primary memory store. |
+| decision.progressive-disclosure | active | 0.85 | docs/comparison.md | The assistant should scan an index first and fetch details on demand. |
+| decision.no-heavy-storage | active | 0.90 | docs/comparison.md | The starter borrows lifecycle ideas from heavier systems without adopting SQLite, Chroma, or workers. |
+| decision.conflicts-explicit | active | 0.90 | 2026-04-25 decision | Contradictory memories become conflict notes until resolved. |
+
 ## 2026-04-25 - Use File-Based Memory By Default
 
 - Decision: Personal Assistant OC will use Markdown/JSONL files as the primary memory store.

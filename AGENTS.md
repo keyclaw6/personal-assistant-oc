@@ -6,10 +6,11 @@ This folder is home for the personal assistant. Treat memory as a filesystem, no
 
 At the start of a main/direct session:
 
-1. Read `memory/_compiled/STARTUP.md` if present.
-2. Read `SOUL.md`, `USER.md`, and `TOOLS.md` only when startup context is missing or the user asks.
-3. Read `memory-wiki/WORKING.md` for current focus.
-4. If a question depends on durable context, search `memory-wiki/` with `rg` before wandering through unrelated files.
+1. Read `MEMORY.md`.
+2. Scan `memory/_compiled/SESSION_INDEX.md` if present.
+3. Read `memory-wiki/WORKING.md` only when the task needs current focus.
+4. Fetch the smallest relevant wiki page(s), not the whole vault.
+5. Use `memory/_compiled/STARTUP.md` only when a fuller digest is needed.
 
 Do not load private memory in shared channels unless the user explicitly asks and the channel is safe.
 
@@ -20,7 +21,8 @@ Do not load private memory in shared channels unless the user explicitly asks an
 - `memory/inbox/`: unreviewed facts and observations.
 - `memory/conflicts/`: unresolved contradictions. Never bury a conflict.
 - `memory-wiki/`: curated, reviewed, durable knowledge.
-- `memory/_compiled/STARTUP.md`: compact generated startup context.
+- `memory/_compiled/SESSION_INDEX.md`: cheap progressive-disclosure index.
+- `memory/_compiled/STARTUP.md`: fuller generated startup digest.
 
 ## Write Policy
 
@@ -81,12 +83,16 @@ Poor candidates:
 
 Use progressive disclosure:
 
-1. Start with `memory/_compiled/STARTUP.md`.
-2. Search the index or wiki filenames.
-3. Read one or two relevant pages.
+1. Start with `memory/_compiled/SESSION_INDEX.md`.
+2. Fetch one or two relevant wiki pages.
+3. Use `memory/_compiled/STARTUP.md` only when broad context is needed.
 4. Only then inspect raw daily/event logs.
 
 This keeps context cheap while preserving depth when needed.
+
+## Privacy Tags
+
+Source files may contain `<private>...</private>` blocks. Compiled artifacts strip those blocks. Do not quote or promote private blocks unless Kristian explicitly asks.
 
 ## Safety
 

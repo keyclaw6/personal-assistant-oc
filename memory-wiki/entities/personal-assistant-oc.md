@@ -15,6 +15,13 @@ sources:
 
 Personal Assistant OC is Kristian's OpenClaw personal assistant workspace. It pairs root OpenClaw instructions with a curated file-based memory wiki.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| entity.personal-assistant-oc.workspace | active | 0.85 | README.md | The repository is an OpenClaw personal assistant workspace. |
+| entity.personal-assistant-oc.file-memory | active | 0.95 | README.md | The repository's baseline memory is file-only. |
+
 ## Responsibilities
 
 - Preserve personal context across sessions.

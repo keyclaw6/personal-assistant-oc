@@ -8,6 +8,12 @@ When the assistant learns something, write it somewhere durable:
 - work summary: `memory/daily/YYYY-MM-DD.md`
 - uncertain durable fact: `memory/inbox/`
 
+Use the helper when convenient:
+
+```powershell
+npm run memory:capture -- --type preference --title "Short title" --summary "What should be remembered" --source conversation --confidence 0.8
+```
+
 ## 2. Triage
 
 During heartbeat or session close:
@@ -29,6 +35,14 @@ Promotion means moving a fact into `memory-wiki/` with:
 - `review_after`
 - `sources`
 
+Durable pages should also include a `## Claims` table:
+
+```markdown
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| preference.example | active | 0.80 | memory/inbox/example.md | The durable fact in one sentence. |
+```
+
 ## 4. Compile
 
 Run:
@@ -49,6 +63,7 @@ Run:
 
 ```powershell
 npm run memory:report
+npm run memory:maintain
 ```
 
 Review stale pages, contested claims, low-confidence facts, and open questions.

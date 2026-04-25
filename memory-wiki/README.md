@@ -56,3 +56,15 @@ Statuses:
 ## Write Discipline
 
 Raw observations land in `memory/`. Durable, reviewed knowledge lands here. If an update is uncertain, leave it in `memory/inbox/` or create a conflict note.
+
+## Claim Rows
+
+Durable pages can include a `## Claims` table:
+
+```markdown
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| preference.memory.file-first | active | 0.90 | current setup request | Use files as the baseline memory store. |
+```
+
+The compile script emits these rows into `memory/_compiled/CLAIMS.jsonl` and the session index.

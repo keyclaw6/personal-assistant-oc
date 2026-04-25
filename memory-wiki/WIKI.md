@@ -13,11 +13,12 @@ sources:
 
 ## Retrieval Order
 
-1. `memory/_compiled/STARTUP.md`
-2. `memory-wiki/WORKING.md`
-3. Direct wiki page by filename or `rg`
-4. `memory-wiki/reports/`
-5. Raw logs under `memory/`
+1. `MEMORY.md`
+2. `memory/_compiled/SESSION_INDEX.md`
+3. `memory-wiki/WORKING.md` when current focus matters
+4. Direct wiki page by filename or `rg`
+5. `memory/_compiled/STARTUP.md` when broader context is needed
+6. Raw logs under `memory/`
 
 ## Maintenance Cadence
 

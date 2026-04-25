@@ -15,6 +15,14 @@ sources:
 
 OpenClaw runs locally on Windows with Node and a loopback gateway. Memory is maintained with Markdown files and dependency-free Node scripts.
 
+## Claims
+
+| ID | Status | Confidence | Evidence | Claim |
+| --- | --- | ---: | --- | --- |
+| stack.openclaw.local-gateway | active | 0.80 | TOOLS.md | OpenClaw is expected to run locally through the loopback gateway. |
+| stack.memory.node-scripts | active | 0.85 | package.json | Memory maintenance uses dependency-free Node scripts. |
+| stack.memory.vector-db-disabled | active | 0.95 | memory-wiki/.openclaw-wiki/config.json | The starter disables vector database storage by default. |
+
 ## Local Runtime
 
 - OS: Windows
