@@ -28,8 +28,8 @@ async function exists(filePath) {
   }
 }
 
-function sanitizePrivate(text) {
-  return text.replace(/<private>[\s\S]*?<\/private>/gi, "[private omitted]");
+function sanitizePrivate(text = "") {
+  return String(text).replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, "[private omitted]");
 }
 
 function stripFrontmatter(text) {
@@ -92,6 +92,9 @@ function parseClaims(body, page) {
   if (!claimsSection) return [];
   const lines = claimsSection.split(/\r?\n/).filter((line) => line.trim().startsWith("|"));
   if (lines.length < 3) return [];
+
+  const separator = splitTableRow(lines[1] || "").join("");
+  if (!/^[-:]+$/.test(separator)) return [];
 
   const rows = lines
     .slice(2)

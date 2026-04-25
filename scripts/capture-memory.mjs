@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const memoryDir = path.join(root, "memory");
+const defaultTimeZone = process.env.PERSONAL_ASSISTANT_TZ || "Europe/Copenhagen";
 
 function argsToObject(argv) {
   const out = {};
@@ -23,7 +24,7 @@ function argsToObject(argv) {
 }
 
 function sanitizePrivate(text = "") {
-  return String(text).replace(/<private>[\s\S]*?<\/private>/gi, "[private omitted]");
+  return String(text).replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, "[private omitted]");
 }
 
 function slugify(text) {
@@ -34,17 +35,55 @@ function slugify(text) {
     .slice(0, 64) || "memory";
 }
 
+function safeLabel(value, fallback, pattern = /^[a-z][a-z0-9_-]*$/) {
+  const label = sanitizePrivate(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return pattern.test(label) ? label : fallback;
+}
+
 function localDateParts(date = new Date()) {
-  const iso = date.toISOString();
+  const dateParts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: defaultTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+  const timeParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: defaultTimeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(date);
   return {
-    date: iso.slice(0, 10),
-    time: iso
+    date: dateParts,
+    time: `${dateParts}T${timeParts}`,
+    compactTime: timeParts.replaceAll(":", "")
   };
 }
 
 async function append(filePath, content) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.appendFile(filePath, content, "utf8");
+}
+
+async function nextAvailablePath(filePath) {
+  const { dir, name, ext } = path.parse(filePath);
+  await fs.mkdir(dir, { recursive: true });
+  let candidate = filePath;
+  let counter = 2;
+  while (true) {
+    try {
+      await fs.access(candidate);
+      candidate = path.join(dir, `${name}-${counter}${ext}`);
+      counter += 1;
+    } catch {
+      return candidate;
+    }
+  }
 }
 
 async function main() {
@@ -57,16 +96,20 @@ async function main() {
     process.exit(1);
   }
 
-  const { date, time } = localDateParts();
-  const type = args.type || "observation";
-  const source = args.source || "conversation";
-  const confidence = Number(args.confidence || 0.6);
+  const { date, time, compactTime } = localDateParts();
+  const type = safeLabel(args.type, "observation");
+  const source = safeLabel(args.source, "conversation", /^[a-z0-9][a-z0-9_-]*$/);
+  const confidence = Number(args.confidence ?? 0.6);
+  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+    console.error("Confidence must be a number from 0 to 1.");
+    process.exit(1);
+  }
   const tags = String(args.tags || "")
     .split(",")
-    .map((tag) => tag.trim())
+    .map((tag) => safeLabel(tag, ""))
     .filter(Boolean);
-  const id = `${date.replaceAll("-", "")}-${slugify(title)}`;
-  const safeTitle = sanitizePrivate(title);
+  const id = `${date.replaceAll("-", "")}-${compactTime}-${slugify(title)}`;
+  const safeTitle = sanitizePrivate(title).trim().slice(0, 120);
   const safeSummary = sanitizePrivate(summary);
 
   const event = {
@@ -78,6 +121,7 @@ async function main() {
     tags,
     source,
     confidence,
+    time_zone: defaultTimeZone,
     promoted: false
   };
 
@@ -87,7 +131,7 @@ async function main() {
     [`\n## ${safeTitle}`, "", `- Type: ${type}`, `- Source: ${source}`, `- Confidence: ${confidence}`, `- Tags: ${tags.join(", ") || "-"}`, "", safeSummary, ""].join("\n")
   );
 
-  const inboxPath = path.join(memoryDir, "inbox", `${id}.md`);
+  const inboxPath = await nextAvailablePath(path.join(memoryDir, "inbox", `${id}.md`));
   await fs.writeFile(
     inboxPath,
     [

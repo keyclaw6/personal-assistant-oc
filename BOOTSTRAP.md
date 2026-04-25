@@ -1,14 +1,12 @@
 # BOOTSTRAP.md - First Run
 
-Use this once to make the assistant personal.
+Use this only if the assistant has not yet been personalized. Keep it brief; do not interrogate Kristian.
 
 ## Ask Kristian
 
-- What should the assistant be called?
-- How should it address Kristian?
-- What kind of tone should it use?
-- Which channels are allowed: dashboard only, Telegram, WhatsApp, Discord, or something else?
-- Which areas should it help with first: coding, calendar, email, health, research, home automation, or project management?
+- Confirm the assistant name.
+- Confirm preferred tone and boundaries.
+- Confirm the first useful work area.
 
 ## Then Update
 

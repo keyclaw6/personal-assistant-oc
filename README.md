@@ -18,10 +18,8 @@ The design intentionally keeps memory inspectable and version-controlled. OpenCl
 ## Quick Start
 
 ```powershell
-npm run memory:compile
-npm run memory:report
-npm run memory:check
 npm run memory:refresh
+npm run memory:check
 ```
 
 To use this repo as the active OpenClaw workspace:
@@ -44,9 +42,9 @@ openclaw dashboard
 2. Put uncertain items in `memory/inbox/`.
 3. Promote stable facts into `memory-wiki/` only when they have a source and confidence.
 4. If a new fact conflicts with old memory, create a file under `memory/conflicts/` instead of overwriting.
-5. Run `npm run memory:compile` after meaningful changes.
+5. Run `npm run memory:refresh` after meaningful changes.
 6. Use `memory/_compiled/SESSION_INDEX.md` as the default startup scan.
-7. Run `npm run memory:report` to refresh stale/conflict/low-confidence reports.
+7. Run `npm run memory:check` before committing or trusting startup memory.
 
 ## No Vector DB Policy
 

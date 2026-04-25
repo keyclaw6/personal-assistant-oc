@@ -17,9 +17,9 @@ This is the first file to scan. It shows what memory exists and the approximate 
 | preferences.kristian | preferences | draft | 0.70 | ~311 | Preferences | `PREFERENCES.md` |
 | stack.local-openclaw | stack | active | 0.80 | ~293 | Stack | `STACK.md` |
 | projects.active | projects | active | 0.70 | ~230 | Projects | `PROJECTS.md` |
-| decisions.main | decisions | active | 0.80 | ~432 | Decisions | `DECISIONS.md` |
+| decisions.main | decisions | active | 0.80 | ~535 | Decisions | `DECISIONS.md` |
 | people.main | people | draft | 0.60 | ~199 | People | `PEOPLE.md` |
-| working.current | working | active | 0.75 | ~196 | Working | `WORKING.md` |
+| working.current | working | active | 0.75 | ~317 | Working | `WORKING.md` |
 | entity.personal-assistant-oc | entity | active | 0.80 | ~225 | Personal Assistant OC | `entities/personal-assistant-oc.md` |
 | concept.file-based-memory | concept | active | 0.85 | ~265 | File-Based Memory | `concepts/file-based-memory.md` |
 | synthesis.memory-architecture | synthesis | active | 0.85 | ~280 | Memory Architecture | `syntheses/memory-architecture.md` |

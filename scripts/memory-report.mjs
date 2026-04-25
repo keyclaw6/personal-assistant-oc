@@ -42,8 +42,14 @@ async function walk(dir, prefix = "") {
   return files;
 }
 
-function sanitizePrivate(text) {
-  return text.replace(/<private>[\s\S]*?<\/private>/gi, "[private omitted]");
+function sanitizePrivate(text = "") {
+  return String(text).replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, "[private omitted]");
+}
+
+function hasUnclosedPrivateBlock(text = "") {
+  const opens = String(text).match(/<private>/gi)?.length || 0;
+  const closes = String(text).match(/<\/private>/gi)?.length || 0;
+  return opens > closes;
 }
 
 function parseFrontmatter(text) {
@@ -153,6 +159,7 @@ async function main() {
   const claimsMissingEvidence = [];
   const markers = [];
   const privateLeaks = [];
+  const unclosedPrivateBlocks = [];
   const possibleSecrets = [];
 
   for (const file of requiredCompiled) {
@@ -192,6 +199,10 @@ async function main() {
       privateLeaks.push({ relativePath, title });
     }
 
+    if (hasUnclosedPrivateBlock(raw)) {
+      unclosedPrivateBlocks.push({ relativePath, title });
+    }
+
     for (const pattern of secretPatterns) {
       if (pattern.test(sanitizePrivate(raw))) {
         possibleSecrets.push({ relativePath, title });
@@ -227,6 +238,7 @@ async function main() {
     `- Claims missing evidence: ${claimsMissingEvidence.length}`,
     `- Review markers: ${markers.length}`,
     `- Private blocks in source pages: ${privateLeaks.length}`,
+    `- Unclosed private blocks: ${unclosedPrivateBlocks.length}`,
     `- Possible secrets outside private blocks: ${possibleSecrets.length}`,
     "",
     "## Missing Compiled Artifacts",
@@ -259,7 +271,13 @@ async function main() {
     "",
     "## Privacy And Secret Checks",
     "",
-    privateLeaks.length ? "Private blocks are allowed in source pages and stripped from compiled artifacts." : "No private blocks found.",
+    privateLeaks.length ? "Private blocks are allowed in source pages and stripped from compiled artifacts." : "No closed private blocks found.",
+    "",
+    "### Unclosed Private Blocks",
+    "",
+    list(unclosedPrivateBlocks, (item) => `- unclosed private block in \`${item.relativePath}\``),
+    "",
+    "### Possible Secrets Outside Private Blocks",
     "",
     list(possibleSecrets, (item) => `- possible secret in \`${item.relativePath}\``),
     ""
@@ -309,6 +327,7 @@ async function main() {
     ...missingCompiled,
     ...missingMetadata.map((item) => item.relativePath),
     ...claimsMissingEvidence.map((claim) => claim.id),
+    ...unclosedPrivateBlocks.map((item) => item.relativePath),
     ...possibleSecrets.map((item) => item.relativePath)
   ];
 

@@ -11,9 +11,15 @@ sources:
 
 # Working
 
+## Startup Summary
+
+- Current work: finish the polishing pass for the file-only memory system in Personal Assistant OC.
+- Keep retrieval index-first, keep stable memory concise, and regenerate compiled artifacts after edits.
+- Next practical test after model auth: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
+
 ## Current Focus
 
-Build and publish `personal-assistant-oc`, a private OpenClaw workspace repository with file-based memory.
+Finish and publish the hardened `personal-assistant-oc` workspace so it is ready to test through OpenClaw.
 
 ## Claims
 
@@ -23,14 +29,13 @@ Build and publish `personal-assistant-oc`, a private OpenClaw workspace reposito
 
 ## Next Actions
 
-- Compile startup memory.
-- Run memory health report.
-- Create the GitHub repository.
-- Push the initial commit.
-- After model auth is configured, test the assistant through OpenClaw.
+- Push this hardening pass.
+- After model auth is configured, start OpenClaw with this workspace.
+- Verify startup reads `MEMORY.md` and `memory/_compiled/SESSION_INDEX.md`.
+- Capture one real preference through the assistant and run `npm run memory:refresh`.
 
 ## Handoff Notes
 
 - The memory system intentionally avoids vector DBs.
-- Use `npm run memory:compile` after editing durable pages.
-- Use `npm run memory:report` after resolving or adding conflicts.
+- Use `npm run memory:refresh` after editing durable pages.
+- Use `npm run memory:check` before committing or trusting startup memory.

@@ -28,33 +28,11 @@ Active project: build a personal OpenClaw assistant repository with a file-based
 
 ## Decisions
 
-Source: `DECISIONS.md` | ID: `decisions.main` | Cost: ~432 tokens
+Source: `DECISIONS.md` | ID: `decisions.main` | Cost: ~535 tokens
 
-# Decisions
-
-Append only. If a decision changes, add a new entry that supersedes the old one.
-
-## Claims
-
-| ID | Status | Confidence | Evidence | Claim |
-| --- | --- | ---: | --- | --- |
-| decision.file-memory-default | active | 0.95 | 2026-04-25 decision | Personal Assistant OC uses Markdown and JSONL files as the primary memory store. |
-| decision.progressive-disclosure | active | 0.85 | docs/comparison.md | The assistant should scan an index first and fetch details on demand. |
-| decision.no-heavy-storage | active | 0.90 | docs/comparison.md | The starter borrows lifecycle ideas from heavier systems without adopting SQLite, Chroma, or workers. |
-| decision.conflicts-explicit | active | 0.90 | 2026-04-25 decision | Contradictory memories become conflict notes until resolved. |
-
-## 2026-04-25 - Use File-Based Memory By Default
-
-- Decision: Personal Assistant OC will use Markdown/JSONL files as the primary memory store.
-- Rationale: Kristian wants memory without a separate vector database or memory API key.
-- Consequence: Retrieval depends on file structure, compiled digests, plain text search, and good maintenance discipline.
-- Status: active.
-
-## 2026-04-25 - Borrow Lifecycle Ideas, Not Heavy Storage
-
-- Decision: Borrow lifecycle capture and progressive disclosure from systems
-
-[...]
+- File-based memory is the default. Use Markdown/JSONL, compiled indexes, and plain text search before adding heavier storage.
+- Borrow progressive disclosure and lifecycle ideas, but keep the starter free of vector databases, workers, and extra memory API keys.
+- Preserve contradictions explicitly in `memory/conflicts/` and contested claims instead of overwriting durable memory silently.
 
 ## People
 
@@ -64,33 +42,11 @@ Kristian is the primary human for this assistant. Other people should only be ad
 
 ## Working
 
-Source: `WORKING.md` | ID: `working.current` | Cost: ~196 tokens
+Source: `WORKING.md` | ID: `working.current` | Cost: ~317 tokens
 
-# Working
-
-## Current Focus
-
-Build and publish `personal-assistant-oc`, a private OpenClaw workspace repository with file-based memory.
-
-## Claims
-
-| ID | Status | Confidence | Evidence | Claim |
-| --- | --- | ---: | --- | --- |
-| working.memory-polish | active | 0.85 | current setup request | The current work is to polish the file-only memory system so it is robust and minimal. |
-
-## Next Actions
-
-- Compile startup memory.
-- Run memory health report.
-- Create the GitHub repository.
-- Push the initial commit.
-- After model auth is configured, test the assistant through OpenClaw.
-
-## Handoff Notes
-
-- The memory system intentionally avoids vector DBs.
-- Use `npm run memory:compile` after editing durable pages.
-- Use `npm run memory:report` after resolving or adding conflicts.
+- Current work: finish the polishing pass for the file-only memory system in Personal Assistant OC.
+- Keep retrieval index-first, keep stable memory concise, and regenerate compiled artifacts after edits.
+- Next practical test after model auth: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
 
 ## Personal Assistant OC
 

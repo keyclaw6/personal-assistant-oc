@@ -10,16 +10,24 @@
 
 ## Memory Maintenance
 
+- Capture a memory candidate: `npm run memory:capture -- --type observation --title "Short title" --summary "What should be remembered"`
 - Compile digest: `npm run memory:compile`
 - Report stale/conflicting memory: `npm run memory:report`
+- Refresh compile/report/maintenance prompt: `npm run memory:refresh`
 - Check memory health in CI/local scripts: `npm run memory:check`
 
 ## Search
 
-Use `rg` first:
+Use `rg` first when it is available:
 
 ```powershell
 rg -n "keyword" memory-wiki memory
+```
+
+Fallback on Windows:
+
+```powershell
+Get-ChildItem memory-wiki,memory -Recurse -File | Select-String -Pattern "keyword"
 ```
 
 ## Secrets

@@ -2,9 +2,9 @@
 
 On heartbeat, do one small useful thing:
 
-- check whether `memory-wiki/WORKING.md` is stale
-- compile memory if durable files changed
-- run `npm run memory:report`
-- run `npm run memory:maintain` when inbox or daily notes changed
-- summarize unresolved conflicts
-- stay quiet if nothing changed
+- If durable memory changed, run `npm run memory:refresh`.
+- If inbox or daily notes changed, review `memory/_compiled/MAINTENANCE_PROMPT.md`.
+- If conflicts exist, summarize only the unresolved ones.
+- If nothing changed, stay quiet.
+
+Do not touch external channels from a heartbeat without explicit permission.

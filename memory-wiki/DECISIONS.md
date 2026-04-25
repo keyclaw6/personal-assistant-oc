@@ -13,6 +13,12 @@ sources:
 
 Append only. If a decision changes, add a new entry that supersedes the old one.
 
+## Startup Summary
+
+- File-based memory is the default. Use Markdown/JSONL, compiled indexes, and plain text search before adding heavier storage.
+- Borrow progressive disclosure and lifecycle ideas, but keep the starter free of vector databases, workers, and extra memory API keys.
+- Preserve contradictions explicitly in `memory/conflicts/` and contested claims instead of overwriting durable memory silently.
+
 ## Claims
 
 | ID | Status | Confidence | Evidence | Claim |

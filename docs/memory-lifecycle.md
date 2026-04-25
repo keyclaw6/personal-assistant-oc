@@ -53,9 +53,12 @@ npm run memory:compile
 
 This generates:
 
+- `memory/_compiled/SESSION_INDEX.md`
 - `memory/_compiled/STARTUP.md`
 - `memory/_compiled/INDEX.md`
+- `memory/_compiled/CLAIMS.jsonl`
 - `memory-wiki/.openclaw-wiki/cache/agent-digest.json`
+- `memory-wiki/.openclaw-wiki/cache/claims.jsonl`
 
 ## 5. Review
 
@@ -64,9 +67,10 @@ Run:
 ```powershell
 npm run memory:report
 npm run memory:maintain
+npm run memory:check
 ```
 
-Review stale pages, contested claims, low-confidence facts, and open questions.
+Review stale pages, contested claims, low-confidence facts, open questions, malformed private blocks, and possible secrets.
 
 ## 6. Resolve Conflicts
 
