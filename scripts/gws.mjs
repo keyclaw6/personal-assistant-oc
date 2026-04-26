@@ -51,17 +51,34 @@ for (let i = 0; i < args.length; i += 1) {
   out.push(arg);
 }
 
-const command = process.execPath;
-const npxCli = process.platform === "win32"
-  ? path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js")
-  : "npx";
-const commandArgs = process.platform === "win32"
-  ? [npxCli, "-y", "@googleworkspace/cli", ...out]
-  : ["-y", "@googleworkspace/cli", ...out];
+function resolveNpx() {
+  const npmExecPath = process.env.npm_execpath;
+  const cliCandidates = [
+    npmExecPath?.replace(/[\\/]npm-cli\.js$/i, `${path.sep}npx-cli.js`),
+    path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js")
+  ].filter(Boolean);
+
+  const npxCli = cliCandidates.find((candidate) => existsSync(candidate));
+  if (npxCli) {
+    return {
+      command: process.execPath,
+      args: [npxCli, "-y", "@googleworkspace/cli", ...out],
+      shell: false
+    };
+  }
+
+  return {
+    command: process.platform === "win32" ? "npx.cmd" : "npx",
+    args: ["-y", "@googleworkspace/cli", ...out],
+    shell: process.platform === "win32"
+  };
+}
+
+const { command, args: commandArgs, shell } = resolveNpx();
 
 const result = spawnSync(command, commandArgs, {
   stdio: "inherit",
-  shell: false
+  shell
 });
 
 if (result.error) {

@@ -47,7 +47,15 @@ Preferred CLI entrypoint:
 npm run gws -- --help
 ```
 
-Use `scripts/gws.mjs` instead of raw `npx ... --params` on Windows when passing JSON. It supports `--params-file`, `--json-file`, `--params-json`, and `--body-json`.
+Use `scripts/gws.mjs` instead of raw `npx ... --params` on Windows when passing JSON. Prefer `--params-file` and `--json-file`; inline JSON flags such as `--params-json` are mostly for shells with reliable quoting.
+
+```powershell
+@'
+{"calendarId":"primary","maxResults":10}
+'@ | Set-Content -LiteralPath .gws-params.json -Encoding UTF8
+npm run gws -- calendar events list --params-file .gws-params.json
+Remove-Item -LiteralPath .gws-params.json -Force
+```
 
 OpenClaw Gmail webhook helper:
 
