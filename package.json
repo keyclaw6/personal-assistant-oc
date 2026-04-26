@@ -11,7 +11,10 @@
     "memory:maintain": "node scripts/maintenance-prompt.mjs",
     "memory:check": "node scripts/memory-report.mjs --check",
     "memory:smoke": "node scripts/smoke-test.mjs",
-    "memory:refresh": "npm run memory:compile && npm run memory:report && npm run memory:maintain"
+    "memory:refresh": "npm run memory:compile && npm run memory:report && npm run memory:maintain",
+    "repo:check": "node scripts/repo-check.mjs",
+    "check": "npm run memory:check && npm run memory:smoke && npm run repo:check",
+    "test": "npm run check"
   },
   "engines": {
     "node": ">=22.14.0"

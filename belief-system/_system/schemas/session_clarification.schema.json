@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Session Deterministic Clarification",
+  "type": "object",
+  "required": ["session_id", "date", "beliefs_discussed", "user_claims", "agent_inferences", "decisions", "next_actions", "confidence"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "date": { "type": "string" },
+    "beliefs_discussed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slug", "statement", "status_before", "status_after"],
+        "properties": {
+          "slug": { "type": "string" },
+          "statement": { "type": "string" },
+          "status_before": { "type": "string" },
+          "status_after": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "user_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "evidence_type"],
+        "properties": {
+          "claim": { "type": "string" },
+          "evidence_type": { "type": "string", "enum": ["direct_statement", "example", "behavior", "emotion", "source_reference"] },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "agent_inferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["inference", "basis", "confidence"],
+        "properties": {
+          "inference": { "type": "string" },
+          "basis": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "experiments_created": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "completion_marks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+  },
+  "additionalProperties": false
+}

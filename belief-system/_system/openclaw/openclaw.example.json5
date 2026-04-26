@@ -1,0 +1,64 @@
+// Example only. Validate against your installed OpenClaw version with `openclaw doctor`.
+// Set the workspace to this folder so OpenClaw can load AGENTS.md, SOUL.md, TOOLS.md,
+// and skills/belief_change_system/SKILL.md.
+{
+  agents: {
+    defaults: {
+      skills: ["belief_change_system"],
+      subagents: {
+        maxConcurrent: 3,
+        maxChildrenPerAgent: 3,
+        maxSpawnDepth: 1,
+        runTimeoutSeconds: 900
+      }
+    },
+    list: [
+      {
+        id: "belief-coach",
+        default: true,
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System",
+        subagents: {
+          allowAgents: [
+            "source-librarian",
+            "deterministic-clarifier",
+            "pattern-analyst",
+            "auditor",
+            "experiment-designer",
+            "completion-reviewer"
+          ]
+        },
+        heartbeat: {
+          every: "24h",
+          target: "last",
+          lightContext: true,
+          isolatedSession: true,
+          prompt: "Read HEARTBEAT.md if it exists in the workspace. Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK."
+        }
+      },
+      {
+        id: "source-librarian",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      },
+      {
+        id: "deterministic-clarifier",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      },
+      {
+        id: "pattern-analyst",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      },
+      {
+        id: "auditor",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      },
+      {
+        id: "experiment-designer",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      },
+      {
+        id: "completion-reviewer",
+        workspace: "C:/Users/Kristian Bilstrup/Documents/Belief Change System"
+      }
+    ]
+  }
+}

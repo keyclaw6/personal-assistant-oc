@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Belief Experiment",
+  "type": "object",
+  "required": ["id", "belief_slug", "hypothesis", "action", "success_criteria", "learning_criteria", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "belief_slug": { "type": "string" },
+    "hypothesis": { "type": "string" },
+    "old_prediction": { "type": "string" },
+    "new_prediction": { "type": "string" },
+    "action": { "type": "string" },
+    "duration": { "type": "string" },
+    "success_criteria": { "type": "string" },
+    "learning_criteria": { "type": "string" },
+    "risk_notes": { "type": "string" },
+    "status": { "type": "string", "enum": ["planned", "active", "completed", "abandoned"] },
+    "result": { "type": "string" }
+  },
+  "additionalProperties": true
+}

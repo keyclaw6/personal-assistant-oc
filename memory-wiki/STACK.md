@@ -22,6 +22,7 @@ OpenClaw runs locally on Windows with Node and a loopback gateway. Memory is mai
 | stack.openclaw.local-gateway | active | 0.80 | TOOLS.md | OpenClaw is expected to run locally through the loopback gateway. |
 | stack.memory.node-scripts | active | 0.85 | package.json | Memory maintenance uses dependency-free Node scripts. |
 | stack.memory.vector-db-disabled | active | 0.95 | memory-wiki/.openclaw-wiki/config.json | The starter disables vector database storage by default. |
+| stack.model.openai-codex | active | 0.90 | 2026-04-26 runtime verification | The verified working model is `openai-codex/gpt-5.5` using Codex OAuth. |
 
 ## Local Runtime
 
@@ -42,5 +43,5 @@ OpenClaw runs locally on Windows with Node and a loopback gateway. Memory is mai
 
 ## Model Runtime
 
-- Default configured model: `openai/gpt-5.5`
-- Auth status: requires provider login/API key
+- Default configured model: `openai-codex/gpt-5.5`
+- Auth status: Codex OAuth verified locally

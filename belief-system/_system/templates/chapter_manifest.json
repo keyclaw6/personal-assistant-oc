@@ -1,0 +1,18 @@
+{
+  "source_id": "",
+  "chapter_id": "",
+  "chapter_title": "",
+  "status": "not_started",
+  "created": "",
+  "updated": "",
+  "passes_completed": {
+    "comprehension": false,
+    "belief_extraction": false,
+    "daily_life_translation": false,
+    "user_relevance": false
+  },
+  "candidate_beliefs": [],
+  "related_beliefs": [],
+  "open_questions_for_user": [],
+  "confidence": "low"
+}

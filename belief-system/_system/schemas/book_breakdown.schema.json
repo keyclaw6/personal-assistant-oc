@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Book Belief Breakdown",
+  "type": "object",
+  "required": ["source_id", "title", "core_model", "belief_candidates", "daily_life_implications"],
+  "properties": {
+    "source_id": { "type": "string" },
+    "title": { "type": "string" },
+    "authors": { "type": "array", "items": { "type": "string" } },
+    "core_model": { "type": "string" },
+    "claims_to_verify": { "type": "array", "items": { "type": "string" } },
+    "belief_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["old_belief", "new_belief", "daily_behavior_shift"],
+        "properties": {
+          "old_belief": { "type": "string" },
+          "new_belief": { "type": "string" },
+          "daily_behavior_shift": { "type": "string" },
+          "source_location": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "daily_life_implications": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "exercises": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,30 @@
+{
+  "source_id": "scheeren-slate-dunbar-the-freedom-model-for-addictions",
+  "source_type": "book",
+  "title": "The Freedom Model for Addictions: Escape the Treatment and Recovery Trap",
+  "authors": ["Mark Scheeren", "Steven Slate", "Michelle Dunbar"],
+  "status": "preliminary",
+  "created": "2026-04-24",
+  "updated": "2026-04-24",
+  "input_material": ["public source descriptions", "user-stated belief-change framing"],
+  "output_files": [
+    "00_manifest.json",
+    "00_source_metadata.md",
+    "01_surface_summary.md",
+    "02_core_model.md",
+    "03_belief_candidates.md",
+    "04_daily_life_implications.md",
+    "05_exercises.md",
+    "06_key_passages.md",
+    "07_related_beliefs.md",
+    "08_open_questions.md",
+    "09_ingestion_audit.md"
+  ],
+  "candidate_beliefs_created": [
+    "behavior-follows-perceived-benefit",
+    "change-happens-through-understanding",
+    "identity-is-not-repeated-choice"
+  ],
+  "suggestion_queue_updated": true,
+  "confidence": "medium"
+}

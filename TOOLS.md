@@ -5,8 +5,11 @@
 - CLI: `openclaw`
 - Gateway dashboard: use `openclaw dashboard`
 - Local gateway URL: `http://127.0.0.1:18789/`
-- Default model currently configured by OpenClaw: `openai/gpt-5.5`
-- Model auth still needs user login/API key.
+- Default model currently configured by OpenClaw: `openai-codex/gpt-5.5`
+- Auth: Codex OAuth through the `openai-codex` provider.
+- Check model/auth state: `openclaw models status --json`
+- Check runtime state: `openclaw status --json`
+- Security audit: `openclaw security audit --deep`
 
 ## Memory Maintenance
 
@@ -16,6 +19,7 @@
 - Refresh compile/report/maintenance prompt: `npm run memory:refresh`
 - Check memory health in CI/local scripts: `npm run memory:check`
 - Smoke test capture/privacy behavior: `npm run memory:smoke`
+- Full local repo check: `npm run check`
 
 ## Search
 

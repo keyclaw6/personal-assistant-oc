@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pattern Report",
+  "type": "object",
+  "required": ["report_id", "date", "patterns", "suggested_next_focus"],
+  "properties": {
+    "report_id": { "type": "string" },
+    "date": { "type": "string" },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "evidence", "confidence"],
+        "properties": {
+          "name": { "type": "string" },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "related_beliefs": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "disconfirming_evidence": { "type": "string" },
+          "suggested_experiment": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "suggested_next_focus": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

@@ -16,9 +16,9 @@ This is the first file to scan. It shows what memory exists and the approximate 
 | --- | --- | --- | ---: | ---: | --- | --- |
 | profile.kristian | profile | draft | 0.65 | ~275 | Profile | `PROFILE.md` |
 | preferences.kristian | preferences | draft | 0.70 | ~311 | Preferences | `PREFERENCES.md` |
-| stack.local-openclaw | stack | active | 0.80 | ~293 | Stack | `STACK.md` |
-| projects.active | projects | active | 0.70 | ~230 | Projects | `PROJECTS.md` |
-| decisions.main | decisions | active | 0.80 | ~535 | Decisions | `DECISIONS.md` |
+| stack.local-openclaw | stack | active | 0.80 | ~332 | Stack | `STACK.md` |
+| projects.active | projects | active | 0.70 | ~324 | Projects | `PROJECTS.md` |
+| decisions.main | decisions | active | 0.80 | ~699 | Decisions | `DECISIONS.md` |
 | people.main | people | draft | 0.60 | ~199 | People | `PEOPLE.md` |
 | working.current | working | active | 0.75 | ~298 | Working | `WORKING.md` |
 | entity.personal-assistant-oc | entity | active | 0.80 | ~225 | Personal Assistant OC | `entities/personal-assistant-oc.md` |
@@ -38,12 +38,15 @@ This is the first file to scan. It shows what memory exists and the approximate 
 | stack.openclaw.local-gateway | active | 0.80 | OpenClaw is expected to run locally through the loopback gateway. | `STACK.md` |
 | stack.memory.node-scripts | active | 0.85 | Memory maintenance uses dependency-free Node scripts. | `STACK.md` |
 | stack.memory.vector-db-disabled | active | 0.95 | The starter disables vector database storage by default. | `STACK.md` |
+| stack.model.openai-codex | active | 0.90 | The verified working model is `openai-codex/gpt-5.5` using Codex OAuth. | `STACK.md` |
 | project.personal-assistant-oc.active | active | 0.90 | The active project is the `personal-assistant-oc` OpenClaw workspace. | `PROJECTS.md` |
 | project.personal-assistant-oc.file-only | active | 0.95 | The repository should work without a vector database or memory API service. | `PROJECTS.md` |
+| project.belief-system.integrated | active | 0.90 | The belief tracking system is now included under `belief-system/` in this repository as the separate `belief` agent workspace. | `PROJECTS.md` |
 | decision.file-memory-default | active | 0.95 | Personal Assistant OC uses Markdown and JSONL files as the primary memory store. | `DECISIONS.md` |
 | decision.progressive-disclosure | active | 0.85 | The assistant should scan an index first and fetch details on demand. | `DECISIONS.md` |
 | decision.no-heavy-storage | active | 0.90 | The starter borrows lifecycle ideas from heavier systems without adopting SQLite, Chroma, or workers. | `DECISIONS.md` |
 | decision.conflicts-explicit | active | 0.90 | Contradictory memories become conflict notes until resolved. | `DECISIONS.md` |
+| decision.two-agent-single-repo | active | 0.90 | Keep `main` and `belief` as separate OpenClaw agents while storing both workspaces in this private repository. | `DECISIONS.md` |
 | person.kristian.primary-user | active | 0.85 | Kristian Bilstrup is the primary user of this assistant. | `PEOPLE.md` |
 | people.add-sparingly | active | 0.80 | Other people should be added only when useful and safe. | `PEOPLE.md` |
 | working.memory-polish | active | 0.85 | The file-only memory system has been polished for robust, minimal operation. | `WORKING.md` |

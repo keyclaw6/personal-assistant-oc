@@ -1,0 +1,18 @@
+{
+  "session_id": "",
+  "date": "",
+  "mode": "belief_session",
+  "belief_slug": "",
+  "agent_roles_used": [],
+  "source_material": [],
+  "status": "open",
+  "files": {
+    "transcript": "01_transcript.md",
+    "context_loaded": "02_context_loaded.md",
+    "interpretive_analysis": "03_interpretive_analysis.md",
+    "deterministic_clarification": "04_deterministic_clarification.json",
+    "belief_updates": "05_belief_updates.md",
+    "next_actions": "06_next_actions.md",
+    "audit": "07_audit.md"
+  }
+}

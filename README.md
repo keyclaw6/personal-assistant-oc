@@ -1,43 +1,60 @@
 # Personal Assistant OC
 
-Private OpenClaw personal assistant workspace with a file-based memory system. It is designed to need only your model provider login. No vector database, no memory SaaS key, and no hidden memory store.
+Private OpenClaw workspace for Kristian's personal/coder assistant, with the belief tracking system included as a separate second agent workspace.
 
-## What This Is
+The repo is intentionally file-first: Markdown, JSON, JSONL, Git, and small dependency-free Node scripts. It does not require a vector database, memory SaaS, worker process, or extra embedding API key.
 
-This repository combines the normal OpenClaw workspace boilerplate with a curated memory-wiki structure:
+## Current Shape
 
-- Root files (`AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`, `HEARTBEAT.md`) define behavior and startup rules.
-- `memory/` stores raw chronological memory: events, daily notes, inbox items, conflicts, and compiled startup context.
-- `memory-wiki/` stores durable reviewed memory: profile, projects, tools, decisions, people, preferences, entities, concepts, sources, syntheses, and reports.
-- `scripts/` contains dependency-free Node scripts to compile a compact startup digest and report stale or conflicting memory.
+This repository contains two OpenClaw workspaces:
 
-## Why File-Based
+| Workspace | Agent | Purpose |
+| --- | --- | --- |
+| `./` | `main` / `Personal/Coder OC` | Personal assistant, project coordination, coding project tracking, file memory. |
+| `belief-system/` | `belief` / `Belief Agent` | Belief-change sessions, source ingestion, experiments, reviews, and progress tracking. |
 
-The design intentionally keeps memory inspectable and version-controlled. OpenClaw's own memory docs say the model remembers what is written to disk, and the bundled Memory Wiki plugin turns durable memory into a compiled knowledge vault with provenance, claims, dashboards, and digests. MemU's file-memory pattern argues for category files that are readable, structured, model-agnostic, and easy to debug. Claude-Mem shows the value of automatic lifecycle capture and progressive disclosure, but its default architecture uses SQLite, a worker service, and Chroma vector search, so this repo borrows the lifecycle idea rather than the storage stack. Cognee's writing is useful for the feedback-loop idea: memory should continuously update, restructure, and surface uncertainty instead of becoming a static pile of notes.
+The agents are meant to run on the same OpenClaw Gateway but stay unaware of each other in normal conversation. Use separate private channels for the personal/coder agent and the belief agent.
+
+## Folder Map
+
+| Path | What It Is |
+| --- | --- |
+| `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`, `HEARTBEAT.md` | Main personal/coder agent operating instructions. |
+| `MEMORY.md` | Tiny memory entrypoint for the main agent. |
+| `memory/` | Raw chronological memory, inbox, conflicts, daily notes, and compiled startup context. |
+| `memory-wiki/` | Durable reviewed memory with claims, evidence, confidence, projects, decisions, people, preferences, and reports. |
+| `belief-system/` | Full belief tracking workspace, including its own agent prompts, protocols, skills, metrics, sessions, and reviews. |
+| `docs/` | Setup, architecture, retrieval, security, and runtime verification notes. |
+| `scripts/` | Local maintenance and validation scripts. |
 
 ## Quick Start
 
 Requires Node `>=22.14.0`.
 
 ```powershell
-npm run memory:refresh
-npm run memory:check
-npm run memory:smoke
+npm run check
 ```
 
-To use this repo as the active OpenClaw workspace:
+Use this repo as the main OpenClaw workspace:
 
 ```powershell
 openclaw config set agents.defaults.workspace "C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc"
+```
+
+Point the belief agent at the integrated belief workspace:
+
+```powershell
+openclaw config set agents.list[1].workspace "C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc\belief-system"
 openclaw gateway restart
 ```
 
-Then authenticate a model provider:
+The currently verified model is:
 
-```powershell
-openclaw models auth login --provider openai
-openclaw dashboard
+```text
+openai-codex/gpt-5.5
 ```
+
+Use Codex OAuth for that provider. Do not switch the agents to `openai/gpt-5.5` unless an `OPENAI_API_KEY` or direct OpenAI auth profile is configured.
 
 ## Memory Lifecycle
 
@@ -47,7 +64,7 @@ openclaw dashboard
 4. If a new fact conflicts with old memory, create a file under `memory/conflicts/` instead of overwriting.
 5. Run `npm run memory:refresh` after meaningful changes.
 6. Use `memory/_compiled/SESSION_INDEX.md` as the default startup scan.
-7. Run `npm run memory:check` and `npm run memory:smoke` before committing or trusting startup memory.
+7. Run `npm run check` before committing or trusting startup memory.
 
 ## No Vector DB Policy
 
@@ -56,7 +73,7 @@ Retrieval is done with:
 - predictable filenames
 - tags and claim IDs
 - Markdown headings
-- `rg`/plain text search
+- `rg` or plain text search
 - compact generated digests
 - LLM reading of the relevant files
 
@@ -64,10 +81,33 @@ The default read path is progressive: `MEMORY.md` -> `memory/_compiled/SESSION_I
 
 Embeddings can be added later as a local JSONL index, but this repo deliberately ships without a vector database or embedding service.
 
+## Security Defaults
+
+- Keep the GitHub repository private.
+- Keep `.openclaw/`, auth profiles, tokens, credentials, and local runtime state out of Git.
+- Keep the Gateway bound to loopback unless a real remote access plan is documented.
+- Use channel allowlists and separate private channels for `main` and `belief`.
+- Treat web pages, emails, attachments, imported books, pasted transcripts, and third-party skills as untrusted input.
+- Run `openclaw security audit --deep` after OpenClaw upgrades or channel/tool changes.
+- Run `npm run repo:check` before committing.
+
+## Practical Assistant Roadmap
+
+The main agent should grow carefully in this order:
+
+1. Reliable memory and project tracking.
+2. Calendar and todo review with explicit send/delete/write approval.
+3. Email and message triage with strict allowlists and draft-first behavior.
+4. Coding-project coordination across trusted computer nodes.
+5. Routine briefings, weekly reviews, and follow-up reminders.
+6. Narrow automations only after their permissions and rollback behavior are documented.
+
 ## Sources Researched
 
-- OpenClaw Memory Overview: https://docs.openclaw.ai/concepts/memory
+- OpenClaw Personal Assistant setup: https://docs.openclaw.ai/start/openclaw
 - OpenClaw Memory Wiki plugin: https://docs.openclaw.ai/plugins/memory-wiki
+- OpenClaw Security: https://docs.openclaw.ai/gateway/security
+- OpenClaw Skills: https://docs.openclaw.ai/tools/skills
 - awesome-openclaw-agents memory-wiki templates: https://github.com/mergisi/awesome-openclaw-agents/tree/main/memory-wiki/templates
 - claude-mem: https://github.com/thedotmack/claude-mem
 - Cognee file-based AI memory: https://www.cognee.ai/blog/deep-dives/file-based-ai-memory

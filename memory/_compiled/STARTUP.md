@@ -16,19 +16,19 @@ Prefer a smart file structure for memory over a vector database or hosted memory
 
 ## Stack
 
-Source: `STACK.md` | ID: `stack.local-openclaw` | Cost: ~293 tokens
+Source: `STACK.md` | ID: `stack.local-openclaw` | Cost: ~332 tokens
 
 OpenClaw runs locally on Windows with Node and a loopback gateway. Memory is maintained with Markdown files and dependency-free Node scripts.
 
 ## Projects
 
-Source: `PROJECTS.md` | ID: `projects.active` | Cost: ~230 tokens
+Source: `PROJECTS.md` | ID: `projects.active` | Cost: ~324 tokens
 
 Active project: build a personal OpenClaw assistant repository with a file-based memory system and no vector database dependency.
 
 ## Decisions
 
-Source: `DECISIONS.md` | ID: `decisions.main` | Cost: ~535 tokens
+Source: `DECISIONS.md` | ID: `decisions.main` | Cost: ~699 tokens
 
 - File-based memory is the default. Use Markdown/JSONL, compiled indexes, and plain text search before adding heavier storage.
 - Borrow progressive disclosure and lifecycle ideas, but keep the starter free of vector databases, workers, and extra memory API keys.

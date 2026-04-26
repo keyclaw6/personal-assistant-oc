@@ -27,6 +27,7 @@ Append only. If a decision changes, add a new entry that supersedes the old one.
 | decision.progressive-disclosure | active | 0.85 | docs/comparison.md | The assistant should scan an index first and fetch details on demand. |
 | decision.no-heavy-storage | active | 0.90 | docs/comparison.md | The starter borrows lifecycle ideas from heavier systems without adopting SQLite, Chroma, or workers. |
 | decision.conflicts-explicit | active | 0.90 | 2026-04-25 decision | Contradictory memories become conflict notes until resolved. |
+| decision.two-agent-single-repo | active | 0.90 | 2026-04-26 consolidation | Keep `main` and `belief` as separate OpenClaw agents while storing both workspaces in this private repository. |
 
 ## 2026-04-25 - Use File-Based Memory By Default
 
@@ -45,4 +46,11 @@ Append only. If a decision changes, add a new entry that supersedes the old one.
 
 - Decision: Contradictory memories become conflict notes until resolved.
 - Rationale: Silent overwrites make personal memory untrustworthy.
+- Status: active.
+
+## 2026-04-26 - Store Both Agent Workspaces In One Private Repo
+
+- Decision: Keep `main` and `belief` as separate OpenClaw agents, but store the belief tracking workspace under `belief-system/` in this repository.
+- Rationale: Kristian wants one GitHub source of truth while preserving separate channels and memory boundaries.
+- Consequence: Root instructions are for the personal/coder assistant; `belief-system/AGENTS.md` governs belief work.
 - Status: active.

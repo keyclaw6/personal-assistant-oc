@@ -5,7 +5,7 @@ This machine uses two isolated OpenClaw agents on the same Gateway.
 ## Agents
 
 - `main`: personal assistant and coding project coordinator.
-- `belief`: belief-work agent using `C:\Users\Kristian Bilstrup\Documents\Belief Change System`.
+- `belief`: belief-work agent using `C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc\belief-system`.
 
 The agents should not delegate to each other or read each other's workspaces by default. They are separate surfaces for different kinds of conversation.
 
@@ -33,6 +33,16 @@ List current agents and bindings:
 ```powershell
 openclaw agents list --bindings
 openclaw agents bindings
+```
+
+## Workspace Config
+
+The default workspace is the repo root. The belief agent workspace is the nested `belief-system/` folder.
+
+```powershell
+openclaw config set agents.defaults.workspace "C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc"
+openclaw config set agents.list[1].workspace "C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc\belief-system"
+openclaw gateway restart
 ```
 
 ## Computer Nodes

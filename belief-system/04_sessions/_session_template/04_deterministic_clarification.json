@@ -1,0 +1,12 @@
+{
+  "session_id": "",
+  "date": "",
+  "beliefs_discussed": [],
+  "user_claims": [],
+  "agent_inferences": [],
+  "decisions": [],
+  "next_actions": [],
+  "experiments_created": [],
+  "completion_marks": [],
+  "confidence": "low"
+}
