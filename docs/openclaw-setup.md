@@ -37,3 +37,21 @@ npm run check
 ```
 
 The always-loaded memory entrypoint is `MEMORY.md`; it points the agent at `memory/_compiled/SESSION_INDEX.md` before any larger memory files.
+
+## Proactive Cron Jobs
+
+The intended proactive jobs are:
+
+```powershell
+openclaw cron add --name morning-brief --agent main --cron "30 7 * * *" --tz Europe/Copenhagen --session isolated --no-deliver --timeout-seconds 600 --message "Execute the Morning Brief standing order from AGENTS.md. Check Google Workspace sources if available, local commitments, tasks, and memory. Deliver a short private phone-readable brief using the paired Android node Kristian's S22 via system.notify if no private chat channel is configured. If a source is unavailable, include it under Unavailable Sources."
+
+openclaw cron add --name friday-belief-check --agent belief --cron "0 17 * * 5" --tz Europe/Copenhagen --session isolated --no-deliver --timeout-seconds 300 --message "Execute the Friday belief-work reminder from belief-system/AGENTS.md and HEARTBEAT.md. Check whether a qualifying belief session exists in the last 7 days. If none exists, send Kristian a short direct reminder using the paired Android node Kristian's S22 via system.notify if no private chat channel is configured. Do not modify belief files."
+```
+
+Use `openclaw cron list --json` to verify active jobs.
+
+The Android notification path was verified with:
+
+```powershell
+openclaw nodes invoke --node "Kristian's S22" --command system.notify --params '{""title"":""OpenClaw setup"",""body"":""Automation delivery path verified.""}'
+```

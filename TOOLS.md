@@ -38,3 +38,41 @@ Get-ChildItem memory-wiki,memory -Recurse -File | Select-String -Pattern "keywor
 ## Secrets
 
 Do not commit API keys, tokens, passwords, cookies, private SSH keys, or OpenClaw runtime config files.
+
+## Google Workspace
+
+Preferred CLI entrypoint:
+
+```powershell
+npm run gws -- --help
+```
+
+Use `scripts/gws.mjs` instead of raw `npx ... --params` on Windows when passing JSON. It supports `--params-file`, `--json-file`, `--params-json`, and `--body-json`.
+
+OpenClaw Gmail webhook helper:
+
+```powershell
+openclaw webhooks gmail setup --account you@example.com --tailscale serve --json
+openclaw webhooks gmail run --account you@example.com --tailscale serve
+```
+
+Google Workspace credentials and exported auth files must live outside this repository.
+
+Authenticate locally:
+
+```powershell
+npm run gws -- auth login
+```
+
+## Proactive Jobs
+
+List scheduled jobs:
+
+```powershell
+openclaw cron list --json
+```
+
+Expected jobs:
+
+- `morning-brief`: daily at 07:30 Europe/Copenhagen.
+- `friday-belief-check`: Friday at 17:00 Europe/Copenhagen.

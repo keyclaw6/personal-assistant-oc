@@ -57,6 +57,9 @@ Capabilities should be added only after they have a small documented contract:
 - Files: prefer workspace-scoped reads and writes; never search secrets casually.
 - Coding nodes: use the main agent as coordinator; nodes execute bounded tasks.
 - Automations: start with weekly reviews and reminders before always-on actions.
+- Morning brief: run by cron at 07:30 Europe/Copenhagen with narrow read-only Google Workspace authority.
+- Commitment tracking: maintain local files under `memory/commitments/`; surface due and waiting items in the morning brief.
+- Belief accountability: run a Friday cron through the `belief` agent; remind Kristian only if no qualifying belief work happened that week.
 
 ## Repository Boundary
 

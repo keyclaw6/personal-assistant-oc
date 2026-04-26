@@ -123,8 +123,18 @@ Verified on 2026-04-26 using a locally built OpenClaw Android debug app installe
 - Android node pairing: approved.
 - App status: `Connected`.
 - Chat test from Android app: user prompt sent successfully; assistant replied `ANDROID_OK received`.
+- Android node notification: `system.notify` verified for automation delivery.
 
 Do not commit setup codes, pairing tokens, node tokens, screenshots with secrets, or raw `openclaw qr --json` output. Pairing should be regenerated when needed with `openclaw qr --setup-code-only`.
+
+## Proactive Jobs
+
+Verified on 2026-04-26:
+
+- `morning-brief`: enabled, `30 7 * * *`, `Europe/Copenhagen`, agent `main`.
+- `friday-belief-check`: enabled, `0 17 * * 5`, `Europe/Copenhagen`, agent `belief`.
+
+No normal chat channel is configured yet, so the jobs instruct the agent to use the paired Android node notification path when a reminder needs to reach Kristian.
 
 ## Notes
 

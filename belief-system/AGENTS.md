@@ -111,6 +111,20 @@ An agent can recommend:
 
 The user must own the final mark.
 
+## Standing Reminder
+
+Every Friday, a cron job should ask this agent to check whether Kristian completed any meaningful belief work in the last 7 days.
+
+A qualifying session is a folder under `04_sessions/` with `00_manifest.json` and at least one meaningful output file:
+
+- `03_interpretive_analysis.md`
+- `04_deterministic_clarification.json`
+- `06_next_actions.md`
+
+If no qualifying session exists, send Kristian a short direct reminder that this belief work is important for his life and business and suggest starting one belief session today. Prefer the paired Android node `Kristian's S22` via `system.notify` when no normal chat channel is configured.
+
+Do not create sessions, edit belief files, or analyze patterns during the reminder check. This reminder is accountability, not a replacement for the work.
+
 ## Book Ingestion
 
 When the user provides a book:

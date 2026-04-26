@@ -22,6 +22,9 @@ The agents are meant to run on the same OpenClaw Gateway but stay unaware of eac
 | `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`, `HEARTBEAT.md` | Main personal/coder agent operating instructions. |
 | `MEMORY.md` | Tiny memory entrypoint for the main agent. |
 | `memory/` | Raw chronological memory, inbox, conflicts, daily notes, and compiled startup context. |
+| `memory/commitments/` | File-backed tracker for promises, follow-ups, waiting items, and expected replies. |
+| `memory/tasks/` | Local mirror/audit layer for Google Keep-compatible tasks, preferably via Google Tasks. |
+| `memory/briefings/` | Durable notes from proactive briefings when they create useful memory. |
 | `memory-wiki/` | Durable reviewed memory with claims, evidence, confidence, projects, decisions, people, preferences, and reports. |
 | `belief-system/` | Full belief tracking workspace, including its own agent prompts, protocols, skills, metrics, sessions, and reviews. |
 | `docs/` | Setup, architecture, retrieval, security, and runtime verification notes. |
@@ -96,11 +99,14 @@ Embeddings can be added later as a local JSONL index, but this repo deliberately
 The main agent should grow carefully in this order:
 
 1. Reliable memory and project tracking.
-2. Calendar and todo review with explicit send/delete/write approval.
-3. Email and message triage with strict allowlists and draft-first behavior.
-4. Coding-project coordination across trusted computer nodes.
-5. Routine briefings, weekly reviews, and follow-up reminders.
-6. Narrow automations only after their permissions and rollback behavior are documented.
+2. Google Workspace read/search across Gmail, Calendar, Drive, Contacts/People, and Tasks.
+3. Daily morning brief at 07:30 Europe/Copenhagen.
+4. Commitment tracking for promises, follow-ups, waiting items, and unanswered replies.
+5. Google Keep-compatible task review through the safest available API-backed surface.
+6. Email and calendar draft workflows with strict explicit approval before sending or changing anything.
+7. Narrow automations only after their permissions and rollback behavior are documented.
+
+Project radar for coding is intentionally not part of the current proactive plan.
 
 ## Sources Researched
 
