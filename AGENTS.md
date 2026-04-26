@@ -15,6 +15,12 @@ At the start of a main/direct session:
 
 Do not load private memory in shared channels unless the user explicitly asks and the channel is safe.
 
+## Workspace Isolation
+
+Operate from this workspace by default. Do not inspect, summarize, or write into other OpenClaw agent workspaces or private domain systems unless Kristian explicitly names the path and asks for that crossover.
+
+If a request belongs in a separate specialist channel, keep this agent's answer brief and ask Kristian to continue there. Do not assume access to that channel's memory.
+
 ## Memory Layers
 
 - `memory/events/YYYY-MM-DD.jsonl`: append-only event log. Raw, timestamped, source-heavy.
