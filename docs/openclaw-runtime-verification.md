@@ -12,6 +12,7 @@ This note records the live OpenClaw runtime checks completed after configuring t
 - Gateway deep/admin probe: intermittently times out after restart; direct agent turns still succeeded.
 - Main model: `openai-codex/gpt-5.5`
 - Auth mode: Codex OAuth profile through `openai-codex`
+- Heartbeat: `main` enabled every `30m`; `belief` disabled.
 - Local discovery: `bonjour` disabled because the bundled mDNS advertiser was crashing the gateway with `CIAO PROBING CANCELLED`
 - Consolidated belief workspace: `C:\Users\Kristian Bilstrup\Documents\Codex\2026-04-24\please-remove-that-is-currenly-on\personal-assistant-oc\belief-system`
 - Control UI insecure auth toggle: disabled after security audit.
@@ -109,6 +110,21 @@ http://127.0.0.1:18789/chat?session=main
 ```
 
 The dashboard requires the gateway token before it can attach to the running gateway. The token was not written into this repository.
+
+## Android Operator App
+
+Verified on 2026-04-26 using a locally built OpenClaw Android debug app installed through ADB.
+
+- Device: Samsung SM-S901B.
+- App build: `openclaw-2026.4.26-play-debug.apk`.
+- Route: Tailscale Serve over `wss://desktop-ktoi63d.taild6b02c.ts.net`.
+- Gateway endpoint shown in app: `desktop-ktoi63d.taild6b02c.ts.net:443`.
+- Android device pairing: approved.
+- Android node pairing: approved.
+- App status: `Connected`.
+- Chat test from Android app: user prompt sent successfully; assistant replied `ANDROID_OK received`.
+
+Do not commit setup codes, pairing tokens, node tokens, screenshots with secrets, or raw `openclaw qr --json` output. Pairing should be regenerated when needed with `openclaw qr --setup-code-only`.
 
 ## Notes
 
