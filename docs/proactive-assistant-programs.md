@@ -10,11 +10,11 @@ Delivery: prefer the paired Android node `Kristian's S22` via `system.notify` wh
 
 Required checks:
 
-1. Calendar events today and tomorrow morning.
-2. Tasks/reminders due today, overdue, or stale.
+1. Calendar events today and tomorrow morning via `gog`.
+2. Tasks/reminders due today, overdue, or stale via `gog tasks`.
 3. Commitments due today, overdue, or waiting for reply.
-4. New or unanswered Gmail messages.
-5. Drive files changed recently only if relevant to today's work.
+4. New or unanswered Gmail messages via `gog --gmail-no-send`.
+5. Drive files changed recently via `gog drive` only if relevant to today's work.
 6. Open memory inbox or conflicts that need a decision.
 
 Output shape:

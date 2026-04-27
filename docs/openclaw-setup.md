@@ -38,6 +38,27 @@ npm run check
 
 The always-loaded memory entrypoint is `MEMORY.md`; it points the agent at `memory/_compiled/SESSION_INDEX.md` before any larger memory files.
 
+## Google Workspace Skill
+
+The primary Google Workspace integration is the ClawHub/OpenClaw `gog` skill installed in `skills/gog/`.
+
+Verify the skill and binary:
+
+```powershell
+gog --version
+openclaw skills info gog
+```
+
+Set up OAuth credentials outside this repository:
+
+```powershell
+gog auth credentials set C:\path\outside\repo\client_secret.json
+gog auth add you@gmail.com --services gmail,calendar,drive,contacts,tasks,people,docs,sheets --readonly
+gog auth list --json --no-input
+```
+
+Keep write scopes disabled until the read-only workflows are verified.
+
 ## Proactive Cron Jobs
 
 The intended proactive jobs are:

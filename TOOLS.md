@@ -41,7 +41,29 @@ Do not commit API keys, tokens, passwords, cookies, private SSH keys, or OpenCla
 
 ## Google Workspace
 
-Preferred CLI entrypoint:
+Primary CLI entrypoint is ClawHub/OpenClaw `gog`:
+
+```powershell
+gog --help
+gog auth status --json --no-input
+gog schema --json --no-input
+```
+
+Useful safety flags:
+
+- `--json --no-input` for scripted reads.
+- `--gmail-no-send` for Gmail triage/draft workflows.
+- `--dry-run` before supported write actions.
+- `--enable-commands` / `--disable-commands` to narrow a run's command surface.
+
+Setup requires OAuth client credentials stored outside this repository:
+
+```powershell
+gog auth credentials set C:\path\outside\repo\client_secret.json
+gog auth add you@gmail.com --services gmail,calendar,drive,contacts,tasks,people,docs,sheets --readonly
+```
+
+Fallback CLI entrypoint:
 
 ```powershell
 npm run gws -- --help

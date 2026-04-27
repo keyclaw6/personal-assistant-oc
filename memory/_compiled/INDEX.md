@@ -6,7 +6,7 @@
 - [Projects](../../memory-wiki/PROJECTS.md) - projects, active, ~324 tokens
 - [Decisions](../../memory-wiki/DECISIONS.md) - decisions, active, ~699 tokens
 - [People](../../memory-wiki/PEOPLE.md) - people, draft, ~199 tokens
-- [Working](../../memory-wiki/WORKING.md) - working, active, ~298 tokens
+- [Working](../../memory-wiki/WORKING.md) - working, active, ~378 tokens
 - [Personal Assistant OC](../../memory-wiki/entities/personal-assistant-oc.md) - entity, active, ~225 tokens
 - [File-Based Memory](../../memory-wiki/concepts/file-based-memory.md) - concept, active, ~265 tokens
 - [Memory Architecture](../../memory-wiki/syntheses/memory-architecture.md) - synthesis, active, ~419 tokens

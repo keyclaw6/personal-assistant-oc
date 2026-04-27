@@ -27,6 +27,8 @@ The agents are meant to run on the same OpenClaw Gateway but stay unaware of eac
 | `memory/briefings/` | Durable notes from proactive briefings when they create useful memory. |
 | `memory-wiki/` | Durable reviewed memory with claims, evidence, confidence, projects, decisions, people, preferences, and reports. |
 | `belief-system/` | Full belief tracking workspace, including its own agent prompts, protocols, skills, metrics, sessions, and reviews. |
+| `skills/gog/` | ClawHub/OpenClaw Google Workspace skill powered by the `gog` CLI. |
+| `skills/google_workspace_assistant/` | Local policy layer for Google Workspace safety, morning briefs, and commitment tracking. |
 | `docs/` | Setup, architecture, retrieval, security, and runtime verification notes. |
 | `scripts/` | Local maintenance and validation scripts. |
 
@@ -99,7 +101,7 @@ Embeddings can be added later as a local JSONL index, but this repo deliberately
 The main agent should grow carefully in this order:
 
 1. Reliable memory and project tracking.
-2. Google Workspace read/search across Gmail, Calendar, Drive, Contacts/People, and Tasks.
+2. Google Workspace read/search across Gmail, Calendar, Drive, Contacts/People, and Tasks through the ClawHub/OpenClaw `gog` skill.
 3. Daily morning brief at 07:30 Europe/Copenhagen.
 4. Commitment tracking for promises, follow-ups, waiting items, and unanswered replies.
 5. Google Keep-compatible task review through the safest available API-backed surface.

@@ -42,11 +42,11 @@ Kristian is the primary human for this assistant. Other people should only be ad
 
 ## Working
 
-Source: `WORKING.md` | ID: `working.current` | Cost: ~298 tokens
+Source: `WORKING.md` | ID: `working.current` | Cost: ~378 tokens
 
-- The file-only memory system is ready for an OpenClaw smoke test after model auth.
+- The file-only memory system is active and the OpenClaw workspace is configured.
 - Keep retrieval index-first, keep stable memory concise, and regenerate compiled artifacts after edits.
-- Practical test: start OpenClaw with this workspace and confirm the assistant reads `MEMORY.md`, then `SESSION_INDEX.md`, then only relevant pages.
+- Google Workspace should now prefer the ClawHub/OpenClaw `gog` skill, with `gws` kept only as a fallback.
 
 ## Personal Assistant OC
 

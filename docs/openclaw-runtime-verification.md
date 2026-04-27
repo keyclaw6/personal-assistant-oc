@@ -136,6 +136,15 @@ Verified on 2026-04-26:
 
 No normal chat channel is configured yet, so the jobs instruct the agent to use the paired Android node notification path when a reminder needs to reach Kristian.
 
+## Google Workspace Skill
+
+Updated on 2026-04-27:
+
+- ClawHub/OpenClaw `gog` skill installed in `skills/gog/`.
+- `gog` binary installed with WinGet package `steipete.gogcli`, version `0.13.0`.
+- `openclaw skills info gog` reports the workspace `gog` skill as ready when the updated user PATH is loaded.
+- `gog auth status --json --no-input` reports no OAuth credentials configured yet, so Google Workspace reads still require OAuth setup before live data is available.
+
 ## Notes
 
 - The earlier `No API key found for provider "openai"` error was caused by using `openai/gpt-5.5` while the machine was authenticated through Codex OAuth. The working provider/model is `openai-codex/gpt-5.5`.
