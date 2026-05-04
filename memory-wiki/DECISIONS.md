@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: decisions.main
 type: decisions
 status: active

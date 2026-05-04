@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: projects.active
 type: projects
 status: active

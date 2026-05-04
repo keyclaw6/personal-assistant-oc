@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: profile.kristian
 type: profile
 status: draft

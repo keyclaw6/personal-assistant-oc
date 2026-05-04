@@ -1,14 +1,31 @@
 {
+  "schemaVersion": "memory-page/v1",
   "vaultMode": "isolated",
   "renderMode": "obsidian",
   "search": {
     "backend": "local",
-    "corpus": "wiki"
+    "corpus": "wiki",
+    "script": "../scripts/memory-search.mjs",
+    "format": "json"
+  },
+  "agentTools": {
+    "facade": "../scripts/mem.mjs",
+    "verbs": [
+      "search",
+      "get",
+      "put",
+      "check"
+    ]
   },
   "context": {
     "includeCompiledDigestPrompt": true,
     "defaultEntry": "../memory/_compiled/SESSION_INDEX.md",
-    "progressiveDisclosure": true
+    "progressiveDisclosure": true,
+    "layers": [
+      "L0",
+      "L1",
+      "L2"
+    ]
   },
   "render": {
     "preserveHumanBlocks": true,

@@ -67,9 +67,20 @@ Use Codex OAuth for that provider. Do not switch the agents to `openai/gpt-5.5` 
 2. Put uncertain items in `memory/inbox/`.
 3. Promote stable facts into `memory-wiki/` only when they have a source and confidence.
 4. If a new fact conflicts with old memory, create a file under `memory/conflicts/` instead of overwriting.
-5. Run `npm run memory:refresh` after meaningful changes.
+5. Run `npm run mem -- refresh` after meaningful changes.
 6. Use `memory/_compiled/SESSION_INDEX.md` as the default startup scan.
 7. Run `npm run check` before committing or trusting startup memory.
+
+Agent-facing memory commands are intentionally short:
+
+```powershell
+npm run mem -- search "query"
+npm run mem -- get <id-or-path>
+npm run mem -- put --type observation --title "Short title" --summary "Fact to remember"
+npm run mem -- check
+```
+
+The longer `memory:*` scripts remain available for maintainers and CI.
 
 ## No Vector DB Policy
 

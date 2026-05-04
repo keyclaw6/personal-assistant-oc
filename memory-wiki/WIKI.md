@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: wiki.operating-manual
 type: guide
 status: active
@@ -13,12 +14,20 @@ sources:
 
 ## Retrieval Order
 
-1. `MEMORY.md`
-2. `memory/_compiled/SESSION_INDEX.md`
-3. `memory-wiki/WORKING.md` when current focus matters
-4. Direct wiki page by filename or `rg`
-5. `memory/_compiled/STARTUP.md` when broader context is needed
-6. Raw logs under `memory/`
+1. `memory/_compiled/SESSION_INDEX.md`
+2. `npm run mem -- search "query"` when the right page is not obvious.
+3. `npm run mem -- get <id-or-path>` for one or two focused pages or claims, preferring `## L0` or `## L1` sections.
+4. `memory/_compiled/STARTUP.md` only when broader context is needed.
+5. Raw logs under `memory/` only when the wiki does not answer the question.
+
+## Memory Tool Surface
+
+- `mem search`: find candidate pages or claims.
+- `mem get`: fetch one selected page or claim.
+- `mem put`: capture an unreviewed raw memory.
+- `mem check`: verify memory health after edits.
+
+Use `memory:*` scripts for maintenance and CI only.
 
 ## Maintenance Cadence
 

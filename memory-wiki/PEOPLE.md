@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: people.main
 type: people
 status: draft

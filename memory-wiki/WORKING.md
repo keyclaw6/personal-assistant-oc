@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: working.current
 type: working
 status: active
@@ -38,6 +39,6 @@ Finish Google Workspace OAuth setup for `gog`, then verify read-only Gmail, Cale
 ## Handoff Notes
 
 - The memory system intentionally avoids vector DBs.
-- Use `npm run memory:refresh` after editing durable pages.
-- Use `npm run memory:check` before committing or trusting startup memory.
+- Use `npm run mem -- refresh` after editing durable pages.
+- Use `npm run mem -- check` before committing or trusting startup memory.
 - `gog` is installed locally, but live Google Workspace data is unavailable until OAuth is configured.

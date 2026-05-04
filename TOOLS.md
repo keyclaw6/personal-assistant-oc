@@ -13,11 +13,13 @@
 
 ## Memory Maintenance
 
-- Capture a memory candidate: `npm run memory:capture -- --type observation --title "Short title" --summary "What should be remembered"`
-- Compile digest: `npm run memory:compile`
-- Report stale/conflicting memory: `npm run memory:report`
-- Refresh compile/report/maintenance prompt: `npm run memory:refresh`
-- Check memory health in CI/local scripts: `npm run memory:check`
+- Agent-facing search: `npm run mem -- search "query"`
+- Agent-facing fetch: `npm run mem -- get <id-or-path>`
+- Agent-facing capture: `npm run mem -- put --type observation --title "Short title" --summary "What should be remembered"`
+- Agent-facing health check: `npm run mem -- check`
+- Maintenance refresh: `npm run mem -- refresh`
+- Compile digest directly: `npm run memory:compile`
+- Report stale/conflicting memory directly: `npm run memory:report`
 - Smoke test capture/privacy behavior: `npm run memory:smoke`
 - Full local repo check: `npm run check`
 

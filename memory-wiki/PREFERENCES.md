@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: preferences.kristian
 type: preferences
 status: draft

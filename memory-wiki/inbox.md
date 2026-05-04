@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: wiki.inbox
 type: inbox
 status: active

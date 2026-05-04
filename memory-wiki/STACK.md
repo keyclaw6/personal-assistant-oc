@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: stack.local-openclaw
 type: stack
 status: active
@@ -37,6 +38,7 @@ OpenClaw runs locally on Windows with Node and a loopback gateway. Memory is mai
 
 - Storage: Markdown and JSONL files
 - Search: `rg` / plain text
+- Agent memory facade: `npm run mem -- search|get|put|check`
 - Compile: `npm run memory:compile`
 - Health report: `npm run memory:report`
 - Vector DB: intentionally absent

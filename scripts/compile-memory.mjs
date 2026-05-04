@@ -1,13 +1,27 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  asList,
+  compact,
+  estimateTokens,
+  exists,
+  ignoredWikiDirs,
+  isRecallable,
+  parseClaims,
+  parseFrontmatter,
+  preferredSection,
+  stripFrontmatter,
+  titleFrom,
+  walkMarkdown
+} from "./memory-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wikiDir = path.join(root, "memory-wiki");
 const compiledDir = path.join(root, "memory", "_compiled");
 const cacheDir = path.join(wikiDir, ".openclaw-wiki", "cache");
 
-const coreFiles = [
+const priorityFiles = [
   "PROFILE.md",
   "PREFERENCES.md",
   "STACK.md",
@@ -17,133 +31,54 @@ const coreFiles = [
   "WORKING.md"
 ];
 
-const scanDirs = ["entities", "concepts", "syntheses", "sources"];
-
-async function exists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function sanitizePrivate(text = "") {
-  return String(text).replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, "[private omitted]");
-}
-
-function stripFrontmatter(text) {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
-}
-
-function parseFrontmatter(text) {
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!match) return {};
-
-  const data = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (pair) data[pair[1]] = pair[2].trim().replace(/^["']|["']$/g, "");
-  }
-  return data;
-}
-
-function titleFrom(text, fallback) {
-  const match = text.match(/^#\s+(.+)$/m);
-  return match ? match[1].trim() : fallback.replace(/\.md$/i, "");
-}
-
-function section(text, heading) {
-  const lines = text.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === `## ${heading}`);
-  if (start === -1) return "";
-  const collected = [];
-  for (const line of lines.slice(start + 1)) {
-    if (/^##\s+/.test(line)) break;
-    collected.push(line);
-  }
-  return collected.join("\n").trim();
-}
-
-function compact(text, max = 900) {
-  const normalized = sanitizePrivate(text)
-    .replace(/\r\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  if (normalized.length <= max) return normalized;
-  return `${normalized.slice(0, max).trim()}\n\n[...]`;
-}
-
-function estimateTokens(text) {
-  return Math.max(1, Math.ceil(sanitizePrivate(text).length / 4));
-}
-
-function splitTableRow(line) {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
-}
-
-function parseClaims(body, page) {
-  const claimsSection = section(body, "Claims");
-  if (!claimsSection) return [];
-  const lines = claimsSection.split(/\r?\n/).filter((line) => line.trim().startsWith("|"));
-  if (lines.length < 3) return [];
-
-  const separator = splitTableRow(lines[1] || "").join("");
-  if (!/^[-:]+$/.test(separator)) return [];
-
-  const rows = lines
-    .slice(2)
-    .map(splitTableRow)
-    .filter((cells) => cells.length >= 5 && cells[0] && !/^[-:]+$/.test(cells[0]));
-
-  return rows.map(([id, status, confidence, evidence, text]) => ({
-    id,
-    page: page.path,
-    pageTitle: page.title,
-    status: status || "draft",
-    confidence: Number(confidence) || 0,
-    evidence: evidence || "",
-    text: sanitizePrivate(text || ""),
-    tokenCost: estimateTokens(text || "")
-  }));
-}
-
 async function readPage(relativePath, max = 900) {
   const absolutePath = path.join(wikiDir, relativePath);
   const raw = await fs.readFile(absolutePath, "utf8");
   const meta = parseFrontmatter(raw);
   const body = stripFrontmatter(raw);
   const title = titleFrom(body, path.basename(relativePath));
-  const summary = section(body, "Startup Summary") || section(body, "Summary") || body;
+  const l0 = preferredSection(body, ["L0", "L0 Summary", "L0 - Startup", "Startup Summary"]);
+  const l1 = preferredSection(body, ["L1", "L1 Summary", "L1 - Retrieval", "L1 - Retrieval Summary", "Summary"]);
+  const l2 = preferredSection(body, ["L2", "L2 Details", "L2 - Details"]);
+  const summary = l0 || l1 || body;
   const page = {
     id: meta.id || relativePath.replace(/[\\/]/g, ".").replace(/\.md$/i, ""),
+    schema: meta.schema || meta.schema_version || "memory-page/v1",
     type: meta.type || "note",
     status: meta.status || "draft",
     confidence: Number(meta.confidence) || 0,
     freshness: meta.freshness || "unknown",
     reviewAfter: meta.review_after || "",
+    updatedAt: meta.updated_at || "",
+    scope: meta.scope || "",
+    owner: meta.owner || "",
+    agent: meta.agent || "",
+    visibility: meta.visibility || "local",
+    importance: meta.importance || "",
+    sources: asList(meta.sources),
+    sourceRefs: asList(meta.source_refs),
+    related: asList(meta.related),
+    tags: asList(meta.tags),
     path: relativePath.replaceAll("\\", "/"),
     title,
     tokenCost: estimateTokens(body),
-    summary: compact(summary, max)
+    summary: compact(summary, max),
+    l0: compact(l0 || summary, Math.min(max, 500)),
+    l1: compact(l1 || summary, max),
+    l2: l2 ? compact(l2, max) : ""
   };
   page.claims = parseClaims(body, page);
   return page;
 }
 
-async function listMarkdownFiles(dirName) {
-  const dir = path.join(wikiDir, dirName);
-  if (!(await exists(dir))) return [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => path.join(dirName, entry.name))
-    .sort((a, b) => a.localeCompare(b));
+async function listWikiFiles() {
+  const files = await walkMarkdown(wikiDir, { ignoredDirs: ignoredWikiDirs });
+  const priority = new Map(priorityFiles.map((file, index) => [file, index]));
+  return files.sort((a, b) => {
+    const aPriority = priority.has(a) ? priority.get(a) : Number.MAX_SAFE_INTEGER;
+    const bPriority = priority.has(b) ? priority.get(b) : Number.MAX_SAFE_INTEGER;
+    return aPriority - bPriority || a.localeCompare(b);
+  });
 }
 
 function mdCell(value) {
@@ -153,7 +88,9 @@ function mdCell(value) {
 function pageIndexRows(pages) {
   return pages.map((page) => {
     const confidence = page.confidence ? page.confidence.toFixed(2) : "-";
-    return `| ${mdCell(page.id)} | ${mdCell(page.type)} | ${mdCell(page.status)} | ${confidence} | ~${page.tokenCost} | ${mdCell(page.title)} | \`${page.path}\` |`;
+    const importance = page.importance ? page.importance : "-";
+    const tags = page.tags.length ? page.tags.join(", ") : "-";
+    return `| ${mdCell(page.id)} | ${mdCell(page.type)} | ${mdCell(page.status)} | ${confidence} | ${mdCell(importance)} | ~${page.tokenCost} | ${mdCell(tags)} | ${mdCell(page.title)} | \`${page.path}\` |`;
   });
 }
 
@@ -174,20 +111,15 @@ async function main() {
 
   const pages = [];
 
-  for (const file of coreFiles) {
+  const files = await listWikiFiles();
+  for (const file of files) {
     if (await exists(path.join(wikiDir, file))) {
       pages.push(await readPage(file, file === "DECISIONS.md" ? 1300 : 900));
     }
   }
 
-  for (const dir of scanDirs) {
-    const files = await listMarkdownFiles(dir);
-    for (const file of files) {
-      pages.push(await readPage(file, 700));
-    }
-  }
-
-  const claims = pages.flatMap((page) => page.claims);
+  const recallablePages = pages.filter((page) => isRecallable(page));
+  const claims = recallablePages.flatMap((page) => page.claims.filter((claim) => isRecallable(claim)));
   const sessionIndex = [
     "# Session Memory Index",
     "",
@@ -195,17 +127,17 @@ async function main() {
     "",
     "## Retrieval Protocol",
     "",
-    "1. Scan the page index below.",
-    "2. Read only the one or two source pages that match the current task.",
-    "3. Search raw logs under `memory/` only when the wiki does not answer the question.",
-    "4. Keep new durable facts in `memory/inbox/` until they can be promoted with evidence.",
-    "5. After memory edits, run `npm run memory:refresh` and check the report.",
+    "L0: scan this index and high-signal claims.",
+    "L1: use `npm run mem -- search \"query\"` to find focused pages or claims.",
+    "L2: use `npm run mem -- get <id-or-path>` and cited source files only when details matter.",
+    "",
+    "After memory edits, run `npm run mem -- refresh` and `npm run mem -- check`.",
     "",
     "## Page Index",
     "",
-    "| ID | Type | Status | Conf | Cost | Page | Path |",
-    "| --- | --- | --- | ---: | ---: | --- | --- |",
-    ...pageIndexRows(pages),
+    "| ID | Type | Status | Conf | Importance | Cost | Tags | Page | Path |",
+    "| --- | --- | --- | ---: | --- | ---: | --- | --- | --- |",
+    ...pageIndexRows(recallablePages),
     "",
     "## High-Signal Claims",
     "",
@@ -222,12 +154,12 @@ async function main() {
   const startup = [
     "# Compiled Startup Memory",
     "",
-    "Prefer `SESSION_INDEX.md` first. Use this file when a fuller startup digest is needed.",
+    "Prefer `SESSION_INDEX.md` first. This digest favors L0/L1 sections and omits L2 detail unless a page has no compact summary.",
     "",
-    ...pages.flatMap((page) => [
+    ...recallablePages.flatMap((page) => [
       `## ${page.title}`,
       "",
-      `Source: \`${page.path}\` | ID: \`${page.id}\` | Cost: ~${page.tokenCost} tokens`,
+      `Source: \`${page.path}\` | ID: \`${page.id}\` | Status: ${page.status} | Importance: ${page.importance || "-"} | Cost: ~${page.tokenCost} tokens`,
       "",
       page.summary,
       ""
@@ -237,7 +169,7 @@ async function main() {
   const index = [
     "# Compiled Memory Index",
     "",
-    ...pages.map((page) => `- [${page.title}](../../memory-wiki/${page.path}) - ${page.type}, ${page.status}, ~${page.tokenCost} tokens`)
+    ...recallablePages.map((page) => `- [${page.title}](../../memory-wiki/${page.path}) - ${page.type}, ${page.status}, ~${page.tokenCost} tokens`)
   ].join("\n");
 
   const claimJsonl = claims.map((claim) => JSON.stringify(claim)).join("\n");
@@ -246,7 +178,7 @@ async function main() {
     mode: "file-only-progressive-disclosure",
     vectorDatabase: false,
     embeddingProvider: null,
-    pages,
+    pages: recallablePages,
     claims
   };
 

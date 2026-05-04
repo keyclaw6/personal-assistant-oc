@@ -54,7 +54,7 @@ async function main() {
     "2. Promote only durable facts into `memory-wiki/` with a claim row and evidence.",
     "3. Archive noisy or obsolete inbox items in `memory/archive/`.",
     "4. Create a conflict note if facts disagree.",
-    "5. Run `npm run memory:refresh`, then `npm run memory:check`.",
+    "5. Run `npm run mem -- refresh`, then `npm run mem -- check`.",
     "",
     "## Recent Inbox Files",
     "",

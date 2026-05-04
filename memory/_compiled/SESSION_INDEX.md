@@ -4,27 +4,32 @@ This is the first file to scan. It shows what memory exists and the approximate 
 
 ## Retrieval Protocol
 
-1. Scan the page index below.
-2. Read only the one or two source pages that match the current task.
-3. Search raw logs under `memory/` only when the wiki does not answer the question.
-4. Keep new durable facts in `memory/inbox/` until they can be promoted with evidence.
-5. After memory edits, run `npm run memory:refresh` and check the report.
+L0: scan this index and high-signal claims.
+L1: use `npm run mem -- search "query"` to find focused pages or claims.
+L2: use `npm run mem -- get <id-or-path>` and cited source files only when details matter.
+
+After memory edits, run `npm run mem -- refresh` and `npm run mem -- check`.
 
 ## Page Index
 
-| ID | Type | Status | Conf | Cost | Page | Path |
-| --- | --- | --- | ---: | ---: | --- | --- |
-| profile.kristian | profile | draft | 0.65 | ~275 | Profile | `PROFILE.md` |
-| preferences.kristian | preferences | draft | 0.70 | ~311 | Preferences | `PREFERENCES.md` |
-| stack.local-openclaw | stack | active | 0.80 | ~332 | Stack | `STACK.md` |
-| projects.active | projects | active | 0.70 | ~324 | Projects | `PROJECTS.md` |
-| decisions.main | decisions | active | 0.80 | ~699 | Decisions | `DECISIONS.md` |
-| people.main | people | draft | 0.60 | ~199 | People | `PEOPLE.md` |
-| working.current | working | active | 0.75 | ~378 | Working | `WORKING.md` |
-| entity.personal-assistant-oc | entity | active | 0.80 | ~225 | Personal Assistant OC | `entities/personal-assistant-oc.md` |
-| concept.file-based-memory | concept | active | 0.85 | ~265 | File-Based Memory | `concepts/file-based-memory.md` |
-| synthesis.memory-architecture | synthesis | active | 0.85 | ~419 | Memory Architecture | `syntheses/memory-architecture.md` |
-| source.research-file-memory-2026-04-25 | source | active | 0.80 | ~187 | Research Source Note - File Memory | `sources/research-file-memory-2026-04-25.md` |
+| ID | Type | Status | Conf | Importance | Cost | Tags | Page | Path |
+| --- | --- | --- | ---: | --- | ---: | --- | --- | --- |
+| profile.kristian | profile | draft | 0.65 | - | ~275 | - | Profile | `PROFILE.md` |
+| preferences.kristian | preferences | draft | 0.70 | - | ~311 | - | Preferences | `PREFERENCES.md` |
+| stack.local-openclaw | stack | active | 0.80 | - | ~348 | - | Stack | `STACK.md` |
+| projects.active | projects | active | 0.70 | - | ~324 | - | Projects | `PROJECTS.md` |
+| decisions.main | decisions | active | 0.80 | - | ~699 | - | Decisions | `DECISIONS.md` |
+| people.main | people | draft | 0.60 | - | ~199 | - | People | `PEOPLE.md` |
+| working.current | working | active | 0.75 | - | ~378 | - | Working | `WORKING.md` |
+| concept.file-based-memory | concept | active | 0.85 | - | ~265 | - | File-Based Memory | `concepts/file-based-memory.md` |
+| entity.personal-assistant-oc | entity | active | 0.80 | - | ~225 | - | Personal Assistant OC | `entities/personal-assistant-oc.md` |
+| wiki.inbox | inbox | active | 0.80 | - | ~70 | - | Wiki Inbox | `inbox.md` |
+| wiki.index | index | active | 0.80 | - | ~87 | - | Memory Wiki Index | `index.md` |
+| wiki.readme | guide | active | 0.80 | high | ~706 | memory, schema, retrieval | Memory Wiki | `README.md` |
+| source.harness-2026-04-27 | source-note | active | 0.75 | medium | ~451 | benchmarks, agent-ergonomics, memory | Agent Harness Research | `sources/harness-2026-04-27.md` |
+| source.research-file-memory-2026-04-25 | source | active | 0.80 | - | ~187 | - | Research Source Note - File Memory | `sources/research-file-memory-2026-04-25.md` |
+| synthesis.memory-architecture | synthesis | active | 0.85 | high | ~611 | memory, retrieval, architecture | Memory Architecture | `syntheses/memory-architecture.md` |
+| wiki.operating-manual | guide | active | 0.80 | - | ~305 | - | WIKI.md - Memory Operating Manual | `WIKI.md` |
 
 ## High-Signal Claims
 
@@ -51,10 +56,13 @@ This is the first file to scan. It shows what memory exists and the approximate 
 | people.add-sparingly | active | 0.80 | Other people should be added only when useful and safe. | `PEOPLE.md` |
 | working.memory-polish | active | 0.85 | The file-only memory system has been polished for robust, minimal operation. | `WORKING.md` |
 | working.gog-primary | active | 0.85 | The primary Google Workspace skill is now ClawHub/OpenClaw `gog`; the local Google Workspace assistant skill remains the policy layer. | `WORKING.md` |
-| entity.personal-assistant-oc.workspace | active | 0.85 | The repository is an OpenClaw personal assistant workspace. | `entities/personal-assistant-oc.md` |
-| entity.personal-assistant-oc.file-memory | active | 0.95 | The repository's baseline memory is file-only. | `entities/personal-assistant-oc.md` |
 | concept.file-memory.transparent | active | 0.90 | File-based memory is transparent, auditable, and model-agnostic. | `concepts/file-based-memory.md` |
 | concept.file-memory.progressive | active | 0.85 | File-based memory should be retrieved progressively rather than loaded all at once. | `concepts/file-based-memory.md` |
+| entity.personal-assistant-oc.workspace | active | 0.85 | The repository is an OpenClaw personal assistant workspace. | `entities/personal-assistant-oc.md` |
+| entity.personal-assistant-oc.file-memory | active | 0.95 | The repository's baseline memory is file-only. | `entities/personal-assistant-oc.md` |
+| source.harness.small-surface | active | 0.80 | Small semantic tool surfaces are easier for agents to navigate than exposing every maintenance command. | `sources/harness-2026-04-27.md` |
+| source.harness.progressive-memory | active | 0.80 | Memory recall should search first, fetch one relevant item, and stop when enough context is available. | `sources/harness-2026-04-27.md` |
 | synthesis.memory.three-lane | active | 0.85 | The architecture separates raw capture, curated wiki, and compiled context. | `syntheses/memory-architecture.md` |
 | synthesis.memory.index-first | active | 0.90 | The default retrieval path is index first, page second, raw logs last. | `syntheses/memory-architecture.md` |
+| synthesis.memory.short-facade | active | 0.85 | OpenClaw agents should use the four-verb memory facade for normal memory work. | `syntheses/memory-architecture.md` |
 | synthesis.memory.robust-personal | active | 0.80 | The architecture is robust for personal assistant memory when maintenance checks are run after edits. | `syntheses/memory-architecture.md` |

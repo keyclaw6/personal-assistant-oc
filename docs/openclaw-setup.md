@@ -31,8 +31,8 @@ Either way, the local file scripts remain the baseline memory maintenance path.
 ## Daily Memory Commands
 
 ```powershell
-npm run memory:capture -- --type observation --title "Short title" --summary "What changed" --source conversation
-npm run memory:refresh
+npm run mem -- put --type observation --title "Short title" --summary "What changed" --source conversation
+npm run mem -- refresh
 npm run check
 ```
 

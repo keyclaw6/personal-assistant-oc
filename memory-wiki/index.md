@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: wiki.index
 type: index
 status: active

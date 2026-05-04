@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: source.research-file-memory-2026-04-25
 type: source
 status: active

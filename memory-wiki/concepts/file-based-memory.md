@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: concept.file-based-memory
 type: concept
 status: active

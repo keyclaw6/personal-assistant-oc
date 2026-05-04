@@ -8,7 +8,7 @@ At the start of a main/direct session:
 
 1. Use runtime-provided startup context first.
 2. If `MEMORY.md` was not provided, read it.
-3. Scan `memory/_compiled/SESSION_INDEX.md`; if it is missing, run `npm run memory:compile`.
+3. Scan `memory/_compiled/SESSION_INDEX.md`; if it is missing, run `npm run mem -- refresh`.
 4. Fetch the smallest relevant wiki page(s), not the whole vault.
 5. Read `memory-wiki/WORKING.md` only when the task needs current focus.
 6. Use `memory/_compiled/STARTUP.md` only when a fuller digest is needed.
@@ -32,6 +32,19 @@ The full belief tracking system lives in `belief-system/` as a separate OpenClaw
 - `memory-wiki/`: curated, reviewed, durable knowledge.
 - `memory/_compiled/SESSION_INDEX.md`: cheap progressive-disclosure index.
 - `memory/_compiled/STARTUP.md`: fuller generated startup digest.
+
+## Agent-Facing Memory Tools
+
+Use the short facade first. The old `memory:*` commands are maintenance internals and should not be the model's normal action surface.
+
+| Intent | Command |
+| --- | --- |
+| Search memory | `npm run mem -- search "query"` |
+| Fetch one page or claim | `npm run mem -- get <id-or-path>` |
+| Capture an unreviewed fact | `npm run mem -- put --type observation --title "..." --summary "..."` |
+| Check memory health | `npm run mem -- check` |
+
+Short aliases `s`, `g`, `p`, and `c` are allowed when speed matters, but the full verbs are preferred in durable docs and logs.
 
 ## Write Policy
 
@@ -57,7 +70,7 @@ Ask or clearly state what you changed when editing stable memory:
 - `memory-wiki/concepts/`
 - `memory-wiki/syntheses/`
 
-Never hand-edit generated ignored reports. Change source memory, then rerun `npm run memory:refresh`. Human review notes in `memory-wiki/reports/` are normal source files.
+Never hand-edit generated ignored reports. Change source memory, then rerun `npm run mem -- refresh`. Human review notes in `memory-wiki/reports/` are normal source files.
 
 ## Conflict Handling
 
@@ -67,7 +80,7 @@ When new information contradicts existing memory:
 2. Create `memory/conflicts/YYYY-MM-DD-short-name.md`.
 3. Include both claims, evidence, confidence, and recommended resolution.
 4. Mark affected wiki claims as `status: contested` or add an open question.
-5. Run `npm run memory:refresh`.
+5. Run `npm run mem -- refresh`.
 
 ## Promotion Rules
 
@@ -95,10 +108,11 @@ Poor candidates:
 Use progressive disclosure:
 
 1. Start with `memory/_compiled/SESSION_INDEX.md`.
-2. Fetch one or two relevant wiki pages.
-3. Use `memory/_compiled/STARTUP.md` only when broad context is needed.
-4. Only then inspect raw daily/event logs.
-5. Stop searching when you have enough context.
+2. Use `npm run mem -- search "query"` if the right page is not obvious.
+3. Use `npm run mem -- get <id-or-path>` to fetch one or two focused pages or claims.
+4. Use `memory/_compiled/STARTUP.md` only when broad context is needed.
+5. Only then inspect raw daily/event logs.
+6. Stop searching when you have enough context.
 
 This keeps context cheap while preserving depth when needed.
 

@@ -1,6 +1,21 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  asList,
+  estimateTokens,
+  exists,
+  hasMetadata,
+  ignoredWikiDirs,
+  isRecallable,
+  parseClaims,
+  parseFrontmatter,
+  repoContains,
+  sanitizePrivate,
+  stripFrontmatter,
+  titleFrom,
+  walkMarkdown
+} from "./memory-lib.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wikiDir = path.join(root, "memory-wiki");
@@ -9,8 +24,13 @@ const compiledDir = path.join(root, "memory", "_compiled");
 const checkMode = process.argv.includes("--check");
 const defaultTimeZone = process.env.PERSONAL_ASSISTANT_TZ || "Europe/Copenhagen";
 
-const ignoredDirs = new Set(["reports", "_views", "_attachments", ".openclaw-wiki"]);
 const requiredCompiled = ["SESSION_INDEX.md", "STARTUP.md", "INDEX.md", "CLAIMS.jsonl"];
+const requiredMetadata = ["schema", "id", "type", "status", "confidence", "freshness", "review_after", "sources"];
+const allowedSchemas = new Set(["memory-page/v1"]);
+const allowedStatuses = new Set(["active", "draft", "contested", "retired"]);
+const allowedVisibilities = new Set(["", "private", "local", "shareable"]);
+const allowedFreshness = new Set(["session", "daily", "weekly", "monthly", "quarterly", "stable"]);
+const maxPageTokens = 2500;
 const highConfidenceSecretPatterns = [
   /\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b/,
   /\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}\b/
@@ -19,107 +39,10 @@ const possibleSecretPatterns = [
   /\b[A-Za-z0-9_-]{32,}\b/
 ];
 
-async function exists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function walk(dir, prefix = "") {
-  const entries = (await fs.readdir(dir, { withFileTypes: true }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const files = [];
-
-  for (const entry of entries) {
-    if (entry.name.startsWith(".") && entry.name !== ".openclaw-wiki") continue;
-    if (entry.isDirectory()) {
-      if (ignoredDirs.has(entry.name)) continue;
-      files.push(...await walk(path.join(dir, entry.name), path.join(prefix, entry.name)));
-    } else if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(path.join(prefix, entry.name));
-    }
-  }
-
-  return files;
-}
-
-function sanitizePrivate(text = "") {
-  return String(text).replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, "[private omitted]");
-}
-
 function hasUnclosedPrivateBlock(text = "") {
   const opens = String(text).match(/<private>/gi)?.length || 0;
   const closes = String(text).match(/<\/private>/gi)?.length || 0;
   return opens > closes;
-}
-
-function parseFrontmatter(text) {
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!match) return {};
-
-  const data = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (pair) data[pair[1]] = pair[2].trim().replace(/^["']|["']$/g, "");
-  }
-  return data;
-}
-
-function stripFrontmatter(text) {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
-}
-
-function titleFrom(text, fallback) {
-  const match = text.match(/^#\s+(.+)$/m);
-  return match ? match[1].trim() : fallback;
-}
-
-function section(text, heading) {
-  const lines = text.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === `## ${heading}`);
-  if (start === -1) return "";
-  const collected = [];
-  for (const line of lines.slice(start + 1)) {
-    if (/^##\s+/.test(line)) break;
-    collected.push(line);
-  }
-  return collected.join("\n").trim();
-}
-
-function splitTableRow(line) {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
-}
-
-function parseClaims(body, page) {
-  const claimsSection = section(body, "Claims");
-  if (!claimsSection) return [];
-  const lines = claimsSection.split(/\r?\n/).filter((line) => line.trim().startsWith("|"));
-  if (lines.length < 3) return [];
-
-  const separator = splitTableRow(lines[1] || "").join("");
-  if (!/^[-:]+$/.test(separator)) return [];
-
-  return lines
-    .slice(2)
-    .map(splitTableRow)
-    .filter((cells) => cells.length >= 5 && cells[0] && !/^[-:]+$/.test(cells[0]))
-    .map(([id, status, confidence, evidence, text]) => ({
-      id,
-      page: page.relativePath,
-      pageTitle: page.title,
-      status: status || "draft",
-      confidence: Number(confidence) || 0,
-      evidence: evidence || "",
-      text: sanitizePrivate(text || "")
-    }));
 }
 
 function daysUntil(dateString) {
@@ -142,8 +65,59 @@ function list(items, formatter) {
   return items.length ? items.map(formatter).join("\n") : "- None";
 }
 
+function isRepoPathReference(value) {
+  const text = normalizeReference(value);
+  const wrapped = String(value || "").trim() !== text;
+  if (!text || /^https?:\/\//i.test(text)) return false;
+  if (/^(current setup request|conversation|smoke-test|gog workspace integration update)$/i.test(text)) return false;
+  if (/[<>*?"|]/.test(text)) return false;
+  if (text.includes(" ") && !wrapped && !text.includes("/") && !text.includes("\\")) return false;
+  return text.includes("/") || text.includes("\\") || /\.(md|json|jsonl|txt|yaml|yml|csv|js|mjs)$/i.test(text);
+}
+
+function normalizeReference(value) {
+  return String(value || "").trim().replace(/^`|`$/g, "").replace(/^["']|["']$/g, "");
+}
+
+function sourceParts(value) {
+  return asList(value)
+    .flatMap((item) => String(item).split(/[;,]/))
+    .map((item) => item.trim().replace(/^`|`$/g, ""))
+    .filter(Boolean);
+}
+
+async function brokenPathReferences(page, references) {
+  const broken = [];
+  for (const reference of references) {
+    if (!isRepoPathReference(reference)) continue;
+    const trimmed = normalizeReference(reference);
+    const normalized = path.isAbsolute(trimmed) ? trimmed : trimmed.replaceAll("\\", "/").replace(/^\.\//, "");
+    const absolutePath = path.resolve(root, normalized);
+    if (!repoContains(root, absolutePath) || !(await exists(absolutePath))) {
+      broken.push({ relativePath: page.relativePath, title: page.title, reference });
+    }
+  }
+  return broken;
+}
+
+async function inboxCount() {
+  const inboxDir = path.join(root, "memory", "inbox");
+  if (!(await exists(inboxDir))) return 0;
+  const entries = await fs.readdir(inboxDir, { withFileTypes: true });
+  return entries.filter((entry) => entry.isFile() && !["README.md", ".gitkeep"].includes(entry.name)).length;
+}
+
+async function newestMtime(files, baseDir) {
+  let newest = 0;
+  for (const file of files) {
+    const stats = await fs.stat(path.join(baseDir, file));
+    newest = Math.max(newest, stats.mtimeMs);
+  }
+  return newest;
+}
+
 async function readPages() {
-  const files = await walk(wikiDir);
+  const files = await walkMarkdown(wikiDir, { ignoredDirs: ignoredWikiDirs });
   const pages = [];
 
   for (const relativePath of files) {
@@ -152,7 +126,18 @@ async function readPages() {
     const body = stripFrontmatter(raw);
     const meta = parseFrontmatter(raw);
     const title = titleFrom(body, relativePath);
-    const page = { relativePath, absolutePath, raw, body, meta, title };
+    const page = {
+      relativePath,
+      path: relativePath.replaceAll("\\", "/"),
+      absolutePath,
+      raw,
+      body,
+      meta,
+      id: meta.id || relativePath,
+      title,
+      status: meta.status || "draft",
+      visibility: meta.visibility || "local"
+    };
     page.claims = parseClaims(body, page);
     pages.push(page);
   }
@@ -173,6 +158,12 @@ async function main() {
   const lowConfidencePages = [];
   const lowConfidenceClaims = [];
   const claimsMissingEvidence = [];
+  const invalidMetadata = [];
+  const duplicatePageIds = [];
+  const duplicateClaimIds = [];
+  const oversizedPages = [];
+  const brokenSourceReferences = [];
+  const staleCompiled = [];
   const markers = [];
   const privateLeaks = [];
   const unclosedPrivateBlocks = [];
@@ -183,13 +174,66 @@ async function main() {
     if (!(await exists(path.join(compiledDir, file)))) missingCompiled.push(file);
   }
 
+  const unresolvedInboxCount = await inboxCount();
+  const newestWikiPageMtime = await newestMtime(pages.map((page) => page.relativePath), wikiDir);
+  for (const file of requiredCompiled) {
+    const absolutePath = path.join(compiledDir, file);
+    if (!(await exists(absolutePath))) continue;
+    const stats = await fs.stat(absolutePath);
+    if (stats.mtimeMs + 1000 < newestWikiPageMtime) staleCompiled.push(file);
+  }
+
+  const pageIds = new Map();
+  const claimIds = new Map();
+
   for (const page of pages) {
     const { meta, title, relativePath, raw, body } = page;
-    if (!meta.id || !meta.status || !meta.confidence || !meta.review_after) {
-      missingMetadata.push({ relativePath, title });
+    const pageId = meta.id || relativePath;
+    if (pageIds.has(pageId)) {
+      duplicatePageIds.push({ id: pageId, first: pageIds.get(pageId), second: relativePath });
+    } else {
+      pageIds.set(pageId, relativePath);
     }
 
+    const missingFields = requiredMetadata.filter((field) => !hasMetadata(meta, field));
+    if (missingFields.length) {
+      missingMetadata.push({ relativePath, title, missingFields });
+    }
+
+    const status = String(meta.status || "").toLowerCase();
+    const freshness = String(meta.freshness || "").toLowerCase();
+    const visibility = String(meta.visibility || "").toLowerCase();
     const confidence = Number(meta.confidence);
+    const reviewAfter = String(meta.review_after || "");
+    if (hasMetadata(meta, "schema") && !allowedSchemas.has(String(meta.schema))) {
+      invalidMetadata.push({ relativePath, title, field: "schema", value: meta.schema });
+    }
+    if (hasMetadata(meta, "status") && !allowedStatuses.has(status)) {
+      invalidMetadata.push({ relativePath, title, field: "status", value: meta.status });
+    }
+    if (hasMetadata(meta, "freshness") && !allowedFreshness.has(freshness)) {
+      invalidMetadata.push({ relativePath, title, field: "freshness", value: meta.freshness });
+    }
+    if (hasMetadata(meta, "visibility") && !allowedVisibilities.has(visibility)) {
+      invalidMetadata.push({ relativePath, title, field: "visibility", value: meta.visibility });
+    }
+    if (hasMetadata(meta, "confidence") && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) {
+      invalidMetadata.push({ relativePath, title, field: "confidence", value: meta.confidence });
+    }
+    if (hasMetadata(meta, "review_after") && (daysUntil(reviewAfter) === null)) {
+      invalidMetadata.push({ relativePath, title, field: "review_after", value: meta.review_after });
+    }
+
+    const tokenCost = estimateTokens(body);
+    if (tokenCost > maxPageTokens) {
+      oversizedPages.push({ relativePath, title, tokenCost });
+    }
+
+    brokenSourceReferences.push(...await brokenPathReferences(page, [
+      ...sourceParts(meta.sources),
+      ...sourceParts(meta.source_refs)
+    ]));
+
     if (Number.isFinite(confidence) && confidence < 0.6) {
       lowConfidencePages.push({ relativePath, title, confidence });
     }
@@ -234,12 +278,27 @@ async function main() {
     }
   }
 
+  const reportableClaims = claims.filter((claim) => isRecallable(claim, {
+    includeContested: true,
+    includeRetired: true,
+    includePrivate: false
+  }));
+
   for (const claim of claims) {
+    if (claimIds.has(claim.id)) {
+      duplicateClaimIds.push({ id: claim.id, first: claimIds.get(claim.id), second: claim.page });
+    } else {
+      claimIds.set(claim.id, claim.page);
+    }
     if (claim.status.toLowerCase() === "contested") contestedClaims.push(claim);
     if (claim.confidence < 0.6) lowConfidenceClaims.push(claim);
     if (!claim.evidence || claim.evidence === "-" || claim.evidence.toLowerCase() === "none") {
       claimsMissingEvidence.push(claim);
     }
+    brokenSourceReferences.push(...await brokenPathReferences(
+      { relativePath: claim.page, title: claim.pageTitle },
+      sourceParts(claim.evidence)
+    ));
   }
 
   const report = [
@@ -252,7 +311,14 @@ async function main() {
     `- Wiki pages scanned: ${pages.length}`,
     `- Structured claims scanned: ${claims.length}`,
     `- Missing compiled artifacts: ${missingCompiled.length}`,
+    `- Stale compiled artifacts: ${staleCompiled.length}`,
     `- Missing metadata: ${missingMetadata.length}`,
+    `- Invalid metadata: ${invalidMetadata.length}`,
+    `- Duplicate page IDs: ${duplicatePageIds.length}`,
+    `- Duplicate claim IDs: ${duplicateClaimIds.length}`,
+    `- Oversized pages: ${oversizedPages.length}`,
+    `- Unresolved inbox items: ${unresolvedInboxCount}`,
+    `- Broken source/evidence path references: ${brokenSourceReferences.length}`,
     `- Stale pages: ${stale.length}`,
     `- Contested pages: ${contestedPages.length}`,
     `- Contested claims: ${contestedClaims.length}`,
@@ -268,6 +334,35 @@ async function main() {
     "## Missing Compiled Artifacts",
     "",
     list(missingCompiled, (file) => `- \`${file}\``),
+    "",
+    "## Stale Compiled Artifacts",
+    "",
+    list(staleCompiled, (file) => `- \`${file}\` is older than the newest wiki page; run \`npm run mem -- refresh\``),
+    "",
+    "## Duplicate IDs",
+    "",
+    duplicatePageIds.length || duplicateClaimIds.length
+      ? [
+          ...duplicatePageIds.map((item) => `- page id \`${item.id}\` appears in \`${item.first}\` and \`${item.second}\``),
+          ...duplicateClaimIds.map((item) => `- claim id \`${item.id}\` appears in \`${item.first}\` and \`${item.second}\``)
+        ].join("\n")
+      : "- None",
+    "",
+    "## Oversized Pages",
+    "",
+    list(oversizedPages, (item) => `- \`${item.relativePath}\` is ~${item.tokenCost} tokens (limit ${maxPageTokens})`),
+    "",
+    "## Inbox",
+    "",
+    `- Unresolved inbox items: ${unresolvedInboxCount}`,
+    "",
+    "## Broken Source Or Evidence Paths",
+    "",
+    list(brokenSourceReferences, (item) => `- \`${item.relativePath}\` references missing path \`${item.reference}\``),
+    "",
+    "## Invalid Metadata",
+    "",
+    list(invalidMetadata, (item) => `- \`${item.relativePath}\` field \`${item.field}\` has invalid value \`${item.value}\``),
     "",
     "## Stale Pages",
     "",
@@ -287,7 +382,7 @@ async function main() {
     "",
     "## Missing Metadata",
     "",
-    list(missingMetadata, (item) => `- \`${item.relativePath}\` (${item.title})`),
+    list(missingMetadata, (item) => `- \`${item.relativePath}\` (${item.title}) missing: ${item.missingFields.join(", ")}`),
     "",
     "## Review Markers",
     "",
@@ -318,7 +413,7 @@ async function main() {
     "",
     "## Claims",
     "",
-    list(claims, (claim) => `- \`${claim.id}\` ${claim.status} ${claim.confidence.toFixed(2)} - ${claim.text} (${claim.page})`),
+    list(reportableClaims, (claim) => `- \`${claim.id}\` ${claim.status} ${claim.confidence.toFixed(2)} - ${claim.text} (${claim.page})`),
     ""
   ].join("\n");
 
@@ -353,7 +448,13 @@ async function main() {
 
   const hardFailures = [
     ...missingCompiled,
+    ...staleCompiled,
+    ...duplicatePageIds.map((item) => item.id),
+    ...duplicateClaimIds.map((item) => item.id),
+    ...oversizedPages.map((item) => item.relativePath),
+    ...brokenSourceReferences.map((item) => `${item.relativePath}:${item.reference}`),
     ...missingMetadata.map((item) => item.relativePath),
+    ...invalidMetadata.map((item) => `${item.relativePath}:${item.field}`),
     ...claimsMissingEvidence.map((claim) => claim.id),
     ...unclosedPrivateBlocks.map((item) => item.relativePath),
     ...highConfidenceSecrets.map((item) => item.relativePath)

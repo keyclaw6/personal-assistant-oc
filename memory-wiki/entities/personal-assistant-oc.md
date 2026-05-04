@@ -1,4 +1,5 @@
 ---
+schema: memory-page/v1
 id: entity.personal-assistant-oc
 type: entity
 status: active

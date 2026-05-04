@@ -11,7 +11,7 @@ When the assistant learns something, write it somewhere durable:
 Use the helper when convenient:
 
 ```powershell
-npm run memory:capture -- --type preference --title "Short title" --summary "What should be remembered" --source conversation --confidence 0.8
+npm run mem -- put --type preference --title "Short title" --summary "What should be remembered" --source conversation --confidence 0.8
 ```
 
 ## 2. Triage
@@ -27,6 +27,7 @@ During heartbeat or session close:
 
 Promotion means moving a fact into `memory-wiki/` with:
 
+- `schema` (`memory-page/v1`)
 - `id`
 - `type`
 - `status`
@@ -34,6 +35,47 @@ Promotion means moving a fact into `memory-wiki/` with:
 - `freshness`
 - `review_after`
 - `sources`
+
+Schema v1 also supports optional metadata:
+
+- `scope`: domain or project boundary, such as `personal`, `project`, or `runtime`
+- `owner`: accountable human or maintainer
+- `agent`: assistant or agent workspace that owns the page
+- `visibility`: `private`, `local`, or `shareable`
+- `importance`: `low`, `medium`, `high`, or `critical`
+- `updated_at`: ISO date or timestamp for the last meaningful content update
+- `source_refs`: additional source paths or stable external references
+- `related`: page IDs, claim IDs, or paths that should be considered nearby
+- `tags`: search keywords
+
+Example:
+
+```yaml
+---
+schema: memory-page/v1
+id: preferences.example
+type: preferences
+status: active
+confidence: 0.8
+freshness: stable
+review_after: 2026-07-01
+scope: personal
+owner: Kristian Bilstrup
+agent: main
+visibility: local
+importance: high
+updated_at: 2026-04-27
+sources:
+  - USER.md
+source_refs:
+  - docs/retrieval.md
+related:
+  - preference.memory.no-vector-db
+tags:
+  - retrieval
+  - memory
+---
+```
 
 Durable pages should also include a `## Claims` table:
 
@@ -48,7 +90,7 @@ Durable pages should also include a `## Claims` table:
 For normal use, run:
 
 ```powershell
-npm run memory:refresh
+npm run mem -- refresh
 ```
 
 Use `npm run memory:compile` only when you need to regenerate compiled context without reports.
@@ -69,7 +111,7 @@ Run:
 ```powershell
 npm run memory:report
 npm run memory:maintain
-npm run memory:check
+npm run mem -- check
 npm run memory:smoke
 ```
 
