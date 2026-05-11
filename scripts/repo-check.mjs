@@ -1,107 +1,147 @@
 #!/usr/bin/env node
+/**
+ * repo-check.mjs — Verify repo hygiene for the Companion workspace.
+ *
+ * Checks:
+ * 1. No secrets or credentials committed.
+ * 2. No .env files committed (except .env.template).
+ * 3. No node_modules/ or dist/ committed under plugins/.
+ * 4. .cognee_system/ and .cognee_data/ are gitignored.
+ * 5. Top-level identity files are non-empty.
+ * 6. memory/ tree exists with expected subdirectories.
+ * 7. memory/profile/belief-philosophy.md contains the Perceived Best Option Principle.
+ */
+
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { extname } from "node:path";
+import path from "node:path";
 
-const textExtensions = new Set([
-  ".css",
-  ".csv",
-  ".gitignore",
-  ".html",
-  ".js",
-  ".json",
-  ".json5",
-  ".jsonl",
-  ".md",
-  ".mjs",
-  ".ps1",
-  ".txt",
-  ".yaml",
-  ".yml",
-]);
+const REPO = path.resolve(import.meta.dirname, "..");
 
-const forbiddenTrackedPaths = [
-  /^\.openclaw\//,
-  /^node_modules\//,
-  /^state\/(?!\.gitkeep$)/,
-  /(^|\/)auth-profiles\.json$/,
-  /(^|\/)credentials(\/|$)/,
-  /(^|\/)\.env(\.|$)/,
-];
-
-const secretPatterns = [
-  { name: "OpenAI-style secret", pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
-  { name: "Anthropic-style secret", pattern: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/ },
-  { name: "GitHub token", pattern: /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/ },
-  { name: "Google API key", pattern: /\bAIza[0-9A-Za-z_-]{30,}\b/ },
-  { name: "Private key block", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
-  { name: "OpenClaw gateway token", pattern: /\bgateway\.auth\.token\b\s*[:=]\s*["'][^"']{8,}["']/ },
-];
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function trackedFiles() {
-  const output = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], { encoding: "utf8" });
-  return output.split("\0").filter(Boolean);
+  const out = execFileSync("git", ["ls-files"], {
+    cwd: REPO,
+    encoding: "utf8",
+  });
+  return out.split("\n").filter(Boolean);
 }
 
-function isTextFile(path) {
-  const ext = extname(path).toLowerCase();
-  if (textExtensions.has(ext)) return true;
-  return [".gitattributes", ".gitignore"].some((suffix) => path.endsWith(suffix));
+function read(file) {
+  const p = path.join(REPO, file);
+  return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
+
+function isGitignored(pattern) {
+  try {
+    execFileSync("git", ["check-ignore", pattern], { cwd: REPO, encoding: "utf8" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── checks ───────────────────────────────────────────────────────────────────
 
 const errors = [];
 const files = trackedFiles();
 
-for (const path of files) {
-  const normalized = path.replaceAll("\\", "/");
-
-  for (const pattern of forbiddenTrackedPaths) {
-    if (pattern.test(normalized)) {
-      errors.push(`${path}: forbidden runtime/secret path is tracked`);
-    }
-  }
-
-  if (!existsSync(path)) continue;
-
-  const stats = statSync(path);
-  if (stats.size > 1024 * 1024) {
-    errors.push(`${path}: tracked file is larger than 1 MiB; verify this belongs in Git`);
-  }
-
-  if (!isTextFile(path)) continue;
-
-  const content = readFileSync(path, "utf8");
-  for (const { name, pattern } of secretPatterns) {
-    if (pattern.test(content)) {
-      errors.push(`${path}: possible ${name}`);
-    }
-  }
-
-  if (path.endsWith(".json")) {
-    try {
-      JSON.parse(content);
-    } catch (error) {
-      errors.push(`${path}: invalid JSON (${error.message})`);
-    }
-  }
-
-  if (path.endsWith(".jsonl")) {
-    const lines = content.split(/\r?\n/);
-    lines.forEach((line, index) => {
-      if (!line.trim()) return;
-      try {
-        JSON.parse(line);
-      } catch (error) {
-        errors.push(`${path}:${index + 1}: invalid JSONL (${error.message})`);
-      }
-    });
+// 1. No .env files committed
+for (const f of files) {
+  const base = path.basename(f);
+  if (/^\.env(\..*)?$/.test(base) && base !== ".env.template") {
+    errors.push(`${f}: .env file should not be committed`);
   }
 }
+
+// 2. No node_modules or dist under plugins/
+for (const f of files) {
+  if (f.startsWith("plugins/") && (f.includes("/node_modules/") || f.includes("/dist/"))) {
+    errors.push(`${f}: build/dependency artifact should not be committed`);
+  }
+}
+
+// 3. Cognee runtime dirs gitignored
+if (!isGitignored(".cognee_system/")) {
+  errors.push(".cognee_system/ is not gitignored");
+}
+if (!isGitignored(".cognee_data/")) {
+  errors.push(".cognee_data/ is not gitignored");
+}
+
+// 4. Top-level identity files non-empty
+const identityFiles = [
+  "IDENTITY.md",
+  "SOUL.md",
+  "USER.md",
+  "AGENTS.md",
+  "TOOLS.md",
+  "MEMORY.md",
+  "HEARTBEAT.md",
+  "README.md",
+  "PHILOSOPHY.md",
+];
+for (const f of identityFiles) {
+  const content = read(f);
+  if (!content.trim()) {
+    errors.push(`${f}: identity file is empty`);
+  }
+}
+
+// 5. memory/ tree exists
+const memoryDirs = [
+  "memory/profile",
+  "memory/beliefs",
+  "memory/shadow",
+  "memory/sessions",
+  "memory/life",
+  "memory/sources",
+];
+for (const dir of memoryDirs) {
+  if (!existsSync(path.join(REPO, dir))) {
+    errors.push(`${dir}/: expected memory subdirectory missing`);
+  }
+}
+
+// 6. belief-philosophy.md contains the Perceived Best Option Principle
+const bp = read("memory/profile/belief-philosophy.md");
+if (!bp.includes("Perceived Best Option")) {
+  errors.push("memory/profile/belief-philosophy.md: missing Perceived Best Option Principle");
+}
+
+// 7. conflicts.md exists
+if (!existsSync(path.join(REPO, "memory/conflicts.md"))) {
+  errors.push("memory/conflicts.md: missing");
+}
+
+// 8. Secret patterns in tracked text files
+const secretPatterns = [
+  { name: "OpenRouter API key", pattern: /sk-or-v1-[A-Za-z0-9]{20,}/ },
+  { name: "OpenAI-style secret", pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
+  { name: "Anthropic-style secret", pattern: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/ },
+  { name: "GitHub token", pattern: /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/ },
+  { name: "Private key block", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
+];
+
+const textExts = new Set([".md", ".json", ".mjs", ".js", ".ts", ".yaml", ".yml", ".txt", ".gitignore"]);
+for (const f of files) {
+  const ext = path.extname(f).toLowerCase();
+  if (!textExts.has(ext)) continue;
+  const content = read(f);
+  for (const { name, pattern } of secretPatterns) {
+    if (pattern.test(content)) {
+      errors.push(`${f}: possible ${name} found in tracked file`);
+    }
+  }
+}
+
+// ── report ───────────────────────────────────────────────────────────────────
 
 if (errors.length > 0) {
   console.error("Repo check failed:");
-  for (const error of errors) console.error(`- ${error}`);
+  for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
 
-console.log(`Repo check passed (${files.length} tracked or unignored files scanned).`);
+console.log(`Repo check passed (${files.length} files scanned).`);

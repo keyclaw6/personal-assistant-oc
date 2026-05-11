@@ -2,27 +2,15 @@
   "name": "personal-assistant-oc",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenClaw personal assistant workspace with file-based memory and no vector database.",
+  "description": "Companion — Kristian's personal agent for life ops, belief change, and shadow work.",
   "type": "module",
   "scripts": {
-    "mem": "node scripts/mem.mjs",
-    "mem:search": "node scripts/mem.mjs search",
-    "mem:get": "node scripts/mem.mjs get",
-    "mem:put": "node scripts/mem.mjs put",
-    "mem:check": "node scripts/mem.mjs check",
-    "memory:capture": "node scripts/capture-memory.mjs",
-    "memory:compile": "node scripts/compile-memory.mjs",
-    "memory:report": "node scripts/memory-report.mjs",
-    "memory:search": "node scripts/memory-search.mjs",
-    "memory:eval": "node scripts/memory-eval.mjs",
-    "memory:maintain": "node scripts/maintenance-prompt.mjs",
-    "memory:check": "node scripts/memory-report.mjs --check",
-    "memory:smoke": "node scripts/smoke-test.mjs",
-    "memory:refresh": "npm run memory:compile && npm run memory:report && npm run memory:maintain",
     "gws": "node scripts/gws.mjs",
+    "brief": "node scripts/morning-brief.mjs",
+    "brief:dry": "node scripts/morning-brief.mjs --dry-run",
+    "cognee": "bash scripts/cognee-server.sh",
     "repo:check": "node scripts/repo-check.mjs",
-    "check": "npm run memory:compile && npm run memory:check && npm run memory:eval && npm run memory:smoke && npm run repo:check",
-    "test": "npm run check"
+    "check": "npm run repo:check"
   },
   "engines": {
     "node": ">=22.14.0"

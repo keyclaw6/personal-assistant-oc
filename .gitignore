@@ -11,20 +11,10 @@
 state/*
 !state/.gitkeep
 
-# Generated caches
-memory-wiki/.openclaw-wiki/cache/*
-!memory-wiki/.openclaw-wiki/cache/.gitkeep
-memory-wiki/reports/memory-report.md
-memory-wiki/reports/*.generated.md
-memory/briefings/*.md
-!memory/briefings/README.md
-memory/_compiled/*
-!memory/_compiled/.gitkeep
-!memory/_compiled/SESSION_INDEX.md
-!memory/_compiled/STARTUP.md
-!memory/_compiled/INDEX.md
-!memory/_compiled/CLAIMS.jsonl
-memory/_compiled/MAINTENANCE_PROMPT.md
+# Cognee runtime state
+.cognee_system/
+.cognee_data/
+.env.cognee
 
 # Dependencies
 node_modules/
@@ -34,10 +24,13 @@ dist/
 build/
 *.log
 
-# Cognee runtime state (per IMPLEMENTATION_PLAN.md Phase 7)
-.cognee_system/
-.cognee_data/
-.env.cognee
+# Plugins build artifacts
+plugins/openclaw-messenger/node_modules/
+plugins/openclaw-messenger/dist/
+
+# Briefings (generated daily, kept in briefings/ only when useful)
+memory/life/briefings/*.md
+!memory/life/briefings/.gitkeep
 
 # OS/editor noise
 .DS_Store
