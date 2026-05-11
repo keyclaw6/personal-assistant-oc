@@ -1,5 +1,10 @@
 # OpenClaw Runtime Verification
 
+> **Historical document.** This records the pre-pivot two-agent setup
+> (Companion + Belief Agent) verified on 2026-04-26. The current architecture
+> is a single agent (Companion) with Cognee memory plugin. See
+> `docs/cognee-setup.md` for current setup.
+
 Date: 2026-04-26
 
 This note records the live OpenClaw runtime checks completed after configuring the two-agent setup.

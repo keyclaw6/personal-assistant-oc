@@ -75,8 +75,6 @@ Expected:
 
 - `morning-brief` — daily 07:30 Europe/Copenhagen.
 
-(`friday-belief-check` is removed in the pivot.)
-
 ## Secrets
 
 Do not commit: API keys, tokens, passwords, cookies, private SSH keys,

@@ -1,6 +1,6 @@
 ---
 name: google_workspace_assistant
-description: Policy wrapper for the ClawHub/OpenClaw gog Google Workspace skill. Use for Gmail, Calendar, Drive, Contacts/People, Google Tasks, Google Keep-compatible task review, morning briefs, and commitment tracking.
+description: Policy wrapper for the gog Google Workspace CLI. Use for Gmail, Calendar, Drive, Contacts/People, Google Tasks, morning briefs, and commitment tracking.
 ---
 
 # Google Workspace Assistant
@@ -25,7 +25,7 @@ description: Policy wrapper for the ClawHub/OpenClaw gog Google Workspace skill.
 
 Preferred command family:
 
-```powershell
+```bash
 gog --help
 gog schema gmail search --json --no-input
 gog auth status --json --no-input
@@ -35,22 +35,12 @@ Use `gog --json --no-input` for scripted reads. Add `--gmail-no-send` to Gmail w
 
 Before using the fallback Google Workspace CLI, inspect the exact command shape:
 
-```powershell
+```bash
 npm run gws -- --help
 npm run gws -- schema calendar.events.list --resolve-refs
 ```
 
 Do not guess service/resource/method names or JSON parameter shapes.
-
-On Windows PowerShell, avoid fragile inline JSON quoting. Prefer `scripts/gws.mjs` with `--params-file`:
-
-```powershell
-@'
-{"calendarId":"primary","maxResults":10}
-'@ | Set-Content -LiteralPath .gws-params.json -Encoding UTF8
-npm run gws -- calendar events list --params-file .gws-params.json
-Remove-Item -LiteralPath .gws-params.json -Force
-```
 
 If a command reports missing credentials, report that Google Workspace authentication is missing and stop. Do not retry indefinitely.
 
@@ -60,13 +50,11 @@ If a command exits with validation code `3`, inspect `gws schema ...` before ret
 
 Include:
 
-- Today
-- Calendar
-- Tasks
-- Unanswered Mail
-- Commitments
-- Watch
-- Unavailable Sources
+- Schedule (calendar)
+- Commitments (due, overdue, waiting)
+- Beliefs in Progress (active/testing)
+- Mail (unread count)
+- Captured Yesterday (from session clarification)
 
 Keep the brief short enough to read on a phone.
 

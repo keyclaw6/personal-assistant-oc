@@ -1,55 +1,55 @@
-# OpenClaw Config Migration
+# OpenClaw Config Reference
 
-This directory contains the cleaned OpenClaw instance configuration for migration to a new machine.
+Reference OpenClaw instance configuration for Companion. This is **not** the
+live config — the live config lives at `~/.openclaw/openclaw.json` and is
+managed via `openclaw config set`. This file documents the intended shape.
 
 ## What's Included
 
-- **`openclaw.json`** — Main instance config (agents, gateway, plugins, auth)
-- **`gateway.cmd`** — Gateway startup script template
+- **`openclaw.json`** — Reference instance config (agents, gateway, plugins)
 
-## Before Starting on New Machine
+## Setup on a New Machine
 
-1. **Update paths** in `openclaw.json`:
-   - `agents.defaults.workspace`
-   - `agents.list[1].workspace` (belief agent)
-   - `agents.list[1].agentDir` (belief agent)
+1. **Set workspace path**:
+   ```bash
+   openclaw config set agents.defaults.workspace "/path/to/personal-assistant-oc"
+   ```
 
 2. **Regenerate auth tokens**:
-   - `gateway.auth.token`
-   - `gateway.remote.token`
-   
-   Run: `openclaw config set gateway.auth.token <new-token>`
+   ```bash
+   openclaw config set gateway.auth.token <new-token>
+   openclaw config set gateway.remote.token <new-token>
+   ```
 
-3. **Update auth profile**:
-   - Replace `<YOUR_EMAIL>` in `auth.profiles` with your actual email
+3. **Set API keys**:
+   - Tavily: `openclaw config set plugins.entries.tavily.config.webSearch.apiKey <key>`
+   - OpenRouter: configure in `.env.cognee` (gitignored)
 
-4. **Set API keys**:
-   - `plugins.entries.tavily.config.webSearch.apiKey` — your Tavily API key
+4. **Install plugins**:
+   ```bash
+   openclaw plugins install @cognee/cognee-openclaw
+   openclaw cognee setup
+   ```
 
-5. **Update `gateway.cmd`** paths:
-   - `TMPDIR` — temp directory on new machine
-   - `NODE_PATH` — path to `node.exe`
-   - `OPENCLAW_INSTALL_PATH` — path to openclaw npm module
+5. **Start gateway**:
+   ```bash
+   openclaw gateway restart
+   ```
 
-## What's NOT Included (Cleaned)
+## Agent
 
-- Plugin runtime dependencies (`plugin-runtime-deps/` — will auto-install)
+Single agent: **Companion**. No separate belief agent, no coder agent.
+
+## Plugins
+
+- **cognee-openclaw** — Memory indexing and retrieval (Cognee)
+- **openclaw-messenger** — Facebook Messenger channel
+- **openrouter** — LLM provider
+- **tavily** — Web search
+
+## What's NOT Included
+
+- Plugin runtime dependencies (auto-install)
 - Backup files (`.bak`, `.clobbered`, `.rejected`)
-- Quarantine directories
-- Old stability logs from failed agent tasks
-
-## Directory Size
-
-Cleaned from ~2.6 GB down to ~26 MB.
-
-## Agents Configured
-
-- **main** — Companion (primary workspace)
-- **belief** — Belief Agent (separate workspace)
-
-## Post-Migration
-
-After copying this config to `~/.openclaw/` on the new machine:
-1. Run `openclaw gateway` to start
-2. Re-authenticate if needed: `openclaw auth login`
-3. Plugins will reinstall automatically on first run
+- `.env.cognee` (gitignored — contains API keys)
+- `.cognee_system/` and `.cognee_data/` (gitignored — regenerable)

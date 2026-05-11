@@ -10,7 +10,7 @@ metadata: {"clawdbot":{"emoji":"🎮","requires":{"bins":["gog"]},"install":[{"i
 Use `gog` for Gmail/Calendar/Drive/Contacts/Sheets/Docs. Requires OAuth setup.
 
 Setup (once)
-- `gog auth credentials set C:\path\outside\repo\client_secret.json`
+- `gog auth credentials set /path/outside/repo/client_secret.json`
 - `gog auth add you@gmail.com --services gmail,calendar,drive,contacts,tasks,people,docs,sheets --readonly`
 - `gog auth list --json --no-input`
 

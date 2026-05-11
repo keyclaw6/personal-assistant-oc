@@ -1,5 +1,11 @@
 # Proactive Integration Audit - 2026-04-26
 
+> **Historical document.** This records the pre-pivot proactive integration
+> decisions. The current architecture uses a single agent (Companion) with
+> Cognee memory, Messenger channel, and a single morning-brief cron. References
+> to `belief-system/`, `friday-belief-check`, and separate agents are from the
+> old architecture.
+
 ## Loop 1 - Product Scope
 
 Decision: add Google Workspace, commitment tracking, daily morning brief, and belief accountability. Do not add coding project radar.

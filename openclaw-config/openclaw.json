@@ -3,11 +3,10 @@
         "defaults": {
             "workspace": "<UPDATE_ON_NEW_MACHINE>",
             "models": {
-                "openai/gpt-5.5": {},
-                "openai-codex/gpt-5.5": {}
+                "openrouter/deepseek/deepseek-v4-flash": {}
             },
             "model": {
-                "primary": "openai-codex/gpt-5.5"
+                "primary": "openrouter/deepseek/deepseek-v4-flash"
             },
             "heartbeat": {
                 "every": "0m"
@@ -18,16 +17,6 @@
                 "id": "main",
                 "identity": {
                     "name": "Companion"
-                }
-            },
-            {
-                "id": "belief",
-                "name": "belief",
-                "workspace": "<UPDATE_ON_NEW_MACHINE>\\belief-system",
-                "agentDir": "<UPDATE_ON_NEW_MACHINE>\\.openclaw\\agents\\belief\\agent",
-                "model": "openai-codex/gpt-5.5",
-                "identity": {
-                    "name": "Belief Agent"
                 }
             }
         ]
@@ -60,14 +49,14 @@
         ]
     },
     "meta": {
-        "lastTouchedVersion": "2026.4.24",
-        "lastTouchedAt": "2026-04-27T18:00:22.242Z"
+        "lastTouchedVersion": "2026.4.25",
+        "lastTouchedAt": "2026-05-11T18:00:00.000Z"
     },
     "session": {
         "dmScope": "per-channel-peer"
     },
     "tools": {
-        "profile": "coding",
+        "profile": "default",
         "web": {
             "search": {
                 "provider": "tavily",
@@ -75,20 +64,11 @@
             }
         }
     },
-    "auth": {
-        "profiles": {
-            "openai-codex:<YOUR_EMAIL>": {
-                "provider": "openai-codex",
-                "mode": "oauth",
-                "email": "<YOUR_EMAIL>"
-            }
-        }
-    },
     "plugins": {
         "allow": [
-            "openai",
+            "openrouter",
             "tavily",
-            "memory-core",
+            "cognee-openclaw",
             "device-pair",
             "phone-control",
             "talk-voice"
@@ -100,7 +80,7 @@
             "acpx": {
                 "enabled": false
             },
-            "openai": {
+            "openrouter": {
                 "enabled": true
             },
             "tavily": {
@@ -120,14 +100,9 @@
         }
     },
     "wizard": {
-        "lastRunAt": "2026-04-26T10:10:54.595Z",
-        "lastRunVersion": "2026.4.23",
+        "lastRunAt": "2026-05-11T18:00:00.000Z",
+        "lastRunVersion": "2026.4.25",
         "lastRunCommand": "onboard",
         "lastRunMode": "local"
-    },
-    "channels": {
-        "qqbot": {
-            "enabled": false
-        }
     }
 }
