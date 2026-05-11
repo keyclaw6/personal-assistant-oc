@@ -88,7 +88,7 @@ openclaw cognee scopes   # Show memory scope routing
 ### Install bug (#24429)
 
 The installer may register the config entry under `cognee-openclaw` instead
-of the manifest id `memory-cognee`. After install, verify:
+of the manifest id `cognee-openclaw`. After install, verify:
 
 ```bash
 openclaw plugins list

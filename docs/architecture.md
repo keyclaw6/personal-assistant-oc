@@ -9,7 +9,7 @@
 ```
 Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single agent)
                                 │
-                                ├─ memory-cognee plugin  ── reads/indexes ─▶  memory/ + MEMORY.md
+                                ├─ cognee-openclaw plugin  ── reads/indexes ─▶  memory/ + MEMORY.md
                                 │                            (LanceDB + Kuzu + SQLite under .cognee_system/)
                                 │
                                 ├─ openclaw-messenger plugin  ── primary channel

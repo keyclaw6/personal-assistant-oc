@@ -139,17 +139,18 @@ if (yesterdayClarification.trim()) {
 
 // ── output ───────────────────────────────────────────────────────────────────
 
-// Write to briefings/
 const briefingsDir = path.join(REPO, "memory/life/briefings");
-mkdirSync(briefingsDir, { recursive: true });
 const briefPath = path.join(briefingsDir, `${today}.md`);
-writeFileSync(briefPath, brief);
 
 if (DRY_RUN) {
   console.log(brief);
   console.log(`\n---\nWould write to: ${briefPath}`);
   process.exit(0);
 }
+
+// Write to briefings/
+mkdirSync(briefingsDir, { recursive: true });
+writeFileSync(briefPath, brief);
 
 // Send via Messenger (best-effort)
 console.log(brief);

@@ -23,6 +23,10 @@
       "order": 80
     }
   },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test"
+  },
   "devDependencies": {
     "openclaw": "^2026.4.25",
     "typescript": "^6.0.3"

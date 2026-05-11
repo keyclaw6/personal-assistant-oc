@@ -22,7 +22,7 @@ plugin is removed tomorrow, every durable thing survives.
 
 ## Retrieval
 
-The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id `memory-cognee`)
+The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id `cognee-openclaw`)
 indexes `memory/` and `MEMORY.md` into a knowledge graph (Kuzu) + vector
 store (LanceDB) and injects relevant graph-search results into the agent's
 context before each run. The agent does **not** call Cognee directly — it

@@ -22,7 +22,7 @@
 
 ## Memory plugin
 
-- `@cognee/cognee-openclaw` (manifest id `memory-cognee`).
+- `@cognee/cognee-openclaw` (manifest id `cognee-openclaw`).
 - Indexes `MEMORY.md` and `memory/` into LanceDB (vectors) + Kuzu (graph) +
   SQLite (relational), under `.cognee_system/` (gitignored).
 - Pre-run context injection is automatic. The agent does not call Cognee

@@ -15,7 +15,7 @@ philosophy is the stable center every rule traces back to.
 - **Files are source of truth.** `memory/` (and the top-level identity files)
   is everything the agent durably knows.
 - **The Cognee plugin** (`@cognee/cognee-openclaw`, manifest id
-  `memory-cognee`) indexes those files and injects retrieval results before
+  `cognee-openclaw`) indexes those files and injects retrieval results before
   each agent run. The agent does **not** call Cognee directly.
 - **Writing memory means writing a Markdown file** under `memory/`. The
   plugin picks up changes automatically.

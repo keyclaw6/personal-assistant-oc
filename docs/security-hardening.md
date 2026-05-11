@@ -7,7 +7,7 @@ OpenClaw is powerful because it can read files, run tools, browse, and connect c
 Default posture for this repo:
 
 - Gateway stays on loopback unless a remote access plan is documented.
-- `main` and `belief` use separate channels.
+- Single agent (Companion) with Messenger as primary channel.
 - `.openclaw/`, auth profiles, tokens, credentials, logs, and local runtime state stay out of Git.
 - Third-party skills are treated as code, not harmless prompts.
 - External content is treated as untrusted even when it arrives from Kristian.
@@ -16,7 +16,7 @@ Default posture for this repo:
 
 Run these after OpenClaw upgrades, channel changes, tool changes, or major repo edits:
 
-```powershell
+```bash
 openclaw status --json
 openclaw models status --json
 openclaw security audit --deep
@@ -27,8 +27,8 @@ If `openclaw security audit --deep` asks for the Gateway token, do not paste or 
 
 ## Channel Policy
 
-- DMs should be allowlisted.
-- Group channels should require mention gating and sender allowlists.
+- Messenger is the primary user-facing channel.
+- OpenClaw dashboard / CLI are maintenance-only.
 - Do not expose the Gateway on `0.0.0.0` without auth, firewalling, and a reason.
 - Keep `/reasoning` and verbose/debug output out of shared channels.
 
@@ -43,14 +43,14 @@ If `openclaw security audit --deep` asks for the Gateway token, do not paste or 
 
 - Do not store API keys, passwords, cookies, private keys, session tokens, or OAuth tokens in memory.
 - Use `<private>...</private>` blocks only for sensitive notes that should be stripped from compiled artifacts.
-- Conflicts go to `memory/conflicts/`; do not silently overwrite old claims.
-- Belief-system memory stays inside `belief-system/` and should not be summarized by the main agent unless Kristian asks.
+- Conflicts go to `memory/conflicts.md`; do not silently overwrite old claims.
+- `.cognee_system/`, `.cognee_data/`, `.env.cognee` are gitignored.
 
 ## Git Policy
 
 Before pushing:
 
-```powershell
+```bash
 git status --short
 npm run check
 ```

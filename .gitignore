@@ -24,9 +24,9 @@ dist/
 build/
 *.log
 
-# Plugins build artifacts
+# Plugins build artifacts (keep dist/ for openclaw-messenger — needed at runtime)
+!plugins/openclaw-messenger/dist/
 plugins/openclaw-messenger/node_modules/
-plugins/openclaw-messenger/dist/
 
 # Briefings (generated daily, kept in briefings/ only when useful)
 memory/life/briefings/*.md

@@ -13,7 +13,7 @@ of this project. Every architectural decision below traces back to it.
   Facebook Messenger. OpenClaw dashboard / CLI are maintenance-only.
 - File-first memory under `memory/`. Plain Markdown, hand-editable, portable.
 - The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id
-  `memory-cognee`) sits on top, indexing those files into a knowledge graph
+  `cognee-openclaw`) sits on top, indexing those files into a knowledge graph
   (Kuzu) + vector store (LanceDB) and injecting retrieval results before
   each agent run.
 - LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
@@ -73,7 +73,7 @@ including the known install-bug workaround):
 
 ```bash
 openclaw plugins install @cognee/cognee-openclaw@2026.3.4
-openclaw plugins list   # verify id is memory-cognee (not cognee-openclaw)
+openclaw plugins list   # verify cognee-openclaw is enabled
 openclaw gateway restart
 ```
 
