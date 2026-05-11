@@ -1,0 +1,124 @@
+{
+  "id": "messenger",
+  "kind": "channel",
+  "channels": ["messenger"],
+  "activation": {
+    "onStartup": false,
+    "onChannels": ["messenger"]
+  },
+  "name": "Messenger",
+  "description": "Facebook Messenger channel plugin via Meta Graph API",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "channelConfigs": {
+    "messenger": {
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "name": { "type": "string" },
+          "pageAccessToken": { "type": "string" },
+          "appSecret": { "type": "string" },
+          "verifyToken": { "type": "string" },
+          "tokenFile": { "type": "string" },
+          "secretFile": { "type": "string" },
+          "webhookPath": { "type": "string" },
+          "allowFrom": {
+            "type": "array",
+            "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+          },
+          "dmPolicy": {
+            "type": "string",
+            "enum": ["open", "allowlist", "pairing", "disabled"],
+            "default": "pairing"
+          },
+          "dm": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "policy": {
+                "type": "string",
+                "enum": ["pairing", "allowlist", "open", "disabled"],
+                "default": "pairing"
+              },
+              "allowFrom": {
+                "type": "array",
+                "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+              }
+            },
+            "additionalProperties": false
+          },
+          "mediaMaxMb": { "type": "number", "exclusiveMinimum": 0 },
+          "textChunkLimit": { "type": "integer", "exclusiveMinimum": 0 },
+          "responsePrefix": { "type": "string" },
+          "typingIndicator": {
+            "type": "string",
+            "enum": ["none", "message"]
+          },
+          "actions": {
+            "type": "object",
+            "properties": {
+              "reactions": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "accounts": {
+            "type": "object",
+            "propertyNames": { "type": "string" },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "name": { "type": "string" },
+                "pageAccessToken": { "type": "string" },
+                "appSecret": { "type": "string" },
+                "verifyToken": { "type": "string" },
+                "tokenFile": { "type": "string" },
+                "secretFile": { "type": "string" },
+                "webhookPath": { "type": "string" },
+                "allowFrom": {
+                  "type": "array",
+                  "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                },
+                "dmPolicy": {
+                  "type": "string",
+                  "enum": ["open", "allowlist", "pairing", "disabled"]
+                },
+                "dm": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "policy": {
+                      "type": "string",
+                      "enum": ["pairing", "allowlist", "open", "disabled"]
+                    },
+                    "allowFrom": {
+                      "type": "array",
+                      "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": []
+      },
+      "label": "Messenger",
+      "description": "Facebook Messenger via Meta Graph API."
+    }
+  },
+  "channelEnvVars": {
+    "messenger": [
+      "MESSENGER_PAGE_ACCESS_TOKEN",
+      "MESSENGER_APP_SECRET",
+      "MESSENGER_VERIFY_TOKEN"
+    ]
+  }
+}
