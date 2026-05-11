@@ -36,6 +36,7 @@ build/
 
 # Cognee runtime state (per IMPLEMENTATION_PLAN.md Phase 7)
 .cognee_system/
+.cognee_data/
 .env.cognee
 
 # OS/editor noise
