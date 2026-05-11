@@ -2,7 +2,7 @@
 
 ## Loop 1 - Product Scope
 
-Decision: add Google Workspace, commitment tracking, daily morning brief, and Friday belief accountability. Do not add coding project radar.
+Decision: add Google Workspace, commitment tracking, daily morning brief, and belief accountability. Do not add coding project radar.
 
 Reasoning: the assistant should become more personally useful without becoming noisy or over-authorized.
 

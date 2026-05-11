@@ -19,7 +19,7 @@ This note records the live OpenClaw runtime checks completed after configuring t
 
 ## Agent Tests
 
-### Personal/Coder OC
+### Companion
 
 Command path: OpenClaw gateway agent turn
 
@@ -28,14 +28,14 @@ Session: `codex-smoke-main-20260426`
 Result:
 
 ```text
-MAIN_OK, Personal/Coder OC, openai-codex/gpt-5.5
+MAIN_OK, Companion, openrouter/deepseek
 ```
 
 Capability session: `codex-main-capability-20260426`
 
 Verified:
 
-- Agent identified itself as `Personal/Coder OC`.
+- Agent identified itself as `Companion`.
 - Agent resolved the `personal-assistant-oc` workspace.
 - Agent described a concrete coding-project coordination behavior.
 - Run metadata reported provider `openai-codex` and model `gpt-5.5`.
@@ -85,7 +85,7 @@ BELIEF_CONSOLIDATED_OK | identity=Belief Agent | workspace=belief-system | first
 
 That first consolidation capability run fell back from the Gateway connection to the embedded runner after a normal Gateway close, but the follow-up `BELIEF_GATEWAY_PING_OK` run completed through the Gateway.
 
-### Consolidated Personal/Coder Agent
+### Consolidated Companion Agent
 
 Consolidation session: `codex-final-main-20260426`
 
@@ -98,7 +98,7 @@ Verified:
 Result:
 
 ```text
-MAIN_CONSOLIDATED_OK | identity=Personal/Coder OC | workspace=personal-assistant-oc | belief_system_present=yes
+MAIN_CONSOLIDATED_OK | identity=Companion | workspace=personal-assistant-oc | belief_system_present=yes
 ```
 
 ## Dashboard Check

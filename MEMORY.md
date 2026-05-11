@@ -1,25 +1,59 @@
-# MEMORY.md - Load First
+# MEMORY.md — How memory works
 
-This is the tiny always-loaded memory entrypoint. Do not treat it as the full memory and do not load the whole vault by default.
+Files are the source of truth. The Cognee plugin sits on top.
 
-## Read Order
+## Source of truth
 
-1. Scan `memory/_compiled/SESSION_INDEX.md`; if it is missing, run `npm run mem -- refresh`.
-2. Search with `npm run mem -- search "query"` when the right page is not obvious.
-3. Fetch only the specific page or claim needed with `npm run mem -- get <id-or-path>`.
-4. Read `memory-wiki/WORKING.md` only when the task needs current focus.
-5. Use `memory/_compiled/STARTUP.md` only when a broader digest is needed.
-6. Search raw logs in `memory/events/` or `memory/daily/` only as a last step.
+Everything durable about Kristian lives as plain Markdown under `memory/`:
 
-## Write Order
+```
+memory/
+├── profile/        values, current context, learning style, shadow themes, belief philosophy
+├── beliefs/        one file per belief (slug); _index.md is the human table
+├── shadow/         named patterns; interpretive notes (hypotheses)
+├── sessions/       YYYY-MM-DD/transcript.md + clarification.md (two-pass discipline)
+├── life/           commitments.md + briefings/YYYY-MM-DD.md
+├── sources/        books/<slug>/notes.md + belief-map.md
+└── conflicts.md    one file; things currently contested
+```
 
-1. Capture raw facts with `npm run mem -- put --type observation --title "..." --summary "..."`.
-2. Promote durable facts to `memory-wiki/` with evidence.
-3. Refresh generated context with `npm run mem -- refresh`.
-4. Check with `npm run mem -- check`.
+Plain Markdown, hand-editable, committable to git, portable. If the Cognee
+plugin is removed tomorrow, every durable thing survives.
 
-Skip capture for one-off chatter, secrets, or facts that are unlikely to matter again.
+## Retrieval
+
+The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id `memory-cognee`)
+indexes `memory/` and `MEMORY.md` into a knowledge graph (Kuzu) + vector
+store (LanceDB) and injects relevant graph-search results into the agent's
+context before each run. The agent does **not** call Cognee directly — it
+reads files when it needs to and trusts the plugin's pre-run context.
+
+## Writing
+
+- **Capture by writing a file.** No promotion ceremony.
+- **Aggressive auto-capture.** After each meaningful Messenger conversation,
+  write `memory/sessions/YYYY-MM-DD/transcript.md` and `clarification.md`.
+- **Acknowledgment loop.** Morning brief lists "captured yesterday" so
+  Kristian can correct.
+- **Conflicts.** When new information contradicts existing memory, append a
+  one-liner to `memory/conflicts.md` with pointers. Don't silently overwrite.
+- **Forget shortcut.** Kristian can message `forget: <fact>` or edit/delete
+  the file. The Cognee plugin re-syncs automatically.
+
+## Two-pass session discipline
+
+- `transcript.md` — raw conversation, unedited.
+- `clarification.md` — deterministic fact-only summary drawn only from the
+  transcript. No coaching flourish, no speculative pattern claims.
+
+Later pattern analysis reads only clarifications, never live impressions.
+This separation prevents the model from drifting its own narratives into
+"patterns."
 
 ## Privacy
 
-Anything wrapped in `<private>...</private>` is stripped from compiled artifacts. Do not store secrets unless Kristian explicitly asks and provides a safe storage location.
+`<private>…</private>` blocks are stripped from any compiled artifact. Never
+quote them into shared output.
+
+Secrets, tokens, OAuth credentials, and `.cognee_system/` runtime data are
+gitignored. `memory/` is committed to a private repo.

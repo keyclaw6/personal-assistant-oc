@@ -1,66 +1,80 @@
-# Integrated Architecture
+# Architecture — Companion
 
-## Runtime Model
+> Single personal agent for Kristian Bilstrup. One agent, one workspace,
+> three intertwined responsibilities: life ops, belief change, shadow /
+> self-knowledge. Read `PHILOSOPHY.md` before this doc.
 
-This repo is a single Git source of truth for two isolated OpenClaw workspaces.
+## Shape
 
-- Root workspace: `main` agent, named `Personal/Coder OC`.
-- Nested workspace: `belief-system/`, used by the `belief` agent.
-- Shared Gateway: local OpenClaw Gateway on `127.0.0.1:18789`.
-- Shared model auth: `openai-codex/gpt-5.5` through Codex OAuth.
+```
+Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single agent)
+                                │
+                                ├─ memory-cognee plugin  ── reads/indexes ─▶  memory/ + MEMORY.md
+                                │                            (LanceDB + Kuzu + SQLite under .cognee_system/)
+                                │
+                                ├─ openclaw-messenger plugin  ── primary channel
+                                ├─ gog skill                  ── Google Workspace
+                                └─ scripts/morning-brief.mjs  ── 07:30 Europe/Copenhagen cron
+```
 
-The agents should not talk to each other directly. If a crossover is needed, Kristian names the source path and desired output explicitly.
+- **One workspace:** `/home/kab/personal-assistant-oc`. No second agent. No
+  belief sub-workspace; belief content lives under `memory/beliefs/` in this
+  same workspace and is read by the same agent.
+- **Files are source of truth.** Everything durable is Markdown under
+  `memory/`. The Cognee plugin sits on top to index and inject retrieval
+  context; if it disappeared tomorrow, no durable knowledge would be lost.
+- **OpenRouter** is the LLM provider (single API key). DeepSeek high-reasoning
+  for chat. OpenRouter embeddings primary, Ollama `nomic-embed-text`
+  fallback.
+- **Messenger** is the only user-facing channel. OpenClaw dashboard / CLI
+  are maintenance only.
 
-## Main Agent Contract
+## Memory directory
 
-The main agent owns:
+```
+memory/
+├── profile/        values, current-context, learning-style, shadow-themes, belief-philosophy
+├── beliefs/        _index.md + <slug>.md per belief (frontmatter: stage, started, last_touched, completion)
+├── shadow/         <pattern-slug>.md (frontmatter: framing, confidence, first/last_observed)
+├── sessions/       YYYY-MM-DD/{transcript.md, clarification.md}  ← two-pass discipline
+├── life/           commitments.md + briefings/YYYY-MM-DD.md
+├── sources/        books/<slug>/{notes.md, belief-map.md}
+└── conflicts.md    single file; things currently contested
+```
 
-- personal assistant work
-- project and coding coordination
-- memory maintenance in `memory/` and `memory-wiki/`
-- repo setup and documentation
-- later calendar, email, todo, and computer-node workflows
+## Posture
 
-The main agent does not run belief sessions by default.
+Active interlocutor (see `PHILOSOPHY.md`, §"The agent's posture"). Not a
+mirror, not an oracle. Proposes interpretations as hypotheses, draws
+cross-session parallels unprompted, offers multiple reframings, names what's
+avoided, designs experiments, flags contradictions, disagrees gently.
+Confidence is stated. Corrections are remembered.
 
-## Belief Agent Contract
+Kristian owns belief-completion marks. The agent may recommend
+`ready_for_user_decision`; it cannot complete.
 
-The belief agent owns:
+## Two-pass session discipline
 
-- belief-change conversations
-- source and book ingestion for belief work
-- deterministic clarifications
-- experiments and reviews
-- progress tracking and completion marks
+Live Messenger conversation is interpretive and warm. After the session ends
+(5+ minute pause), two files land under `memory/sessions/YYYY-MM-DD/`:
 
-Its rules live in `belief-system/AGENTS.md`, with protocols under `belief-system/_system/`.
+1. `transcript.md` — raw, unedited.
+2. `clarification.md` — deterministic, fact-only summary.
 
-## Memory Contract
+Later pattern analysis reads only clarifications. Never live impressions.
 
-The main memory system uses progressive disclosure:
+## Morning brief
 
-1. `MEMORY.md`
-2. `memory/_compiled/SESSION_INDEX.md`
-3. one or two relevant `memory-wiki/` pages
-4. `memory/_compiled/STARTUP.md` only for broad context
-5. raw logs only if necessary
+Daily 07:30 Europe/Copenhagen via Messenger. Falls back to Android
+`system.notify` on Kristian's S22; final fallback writes
+`memory/life/briefings/YYYY-MM-DD.md` and surfaces in the next heartbeat.
 
-Belief memory is separate. It lives inside `belief-system/` and should be loaded by the belief agent according to that workspace's own context-loading policy.
+Sections: schedule, priorities, commitments, beliefs in progress, captured
+yesterday, mail headline.
 
-## Practical Assistant Growth Path
+## Archived material
 
-Capabilities should be added only after they have a small documented contract:
-
-- Calendar: read events first, draft changes, ask before creating or deleting.
-- Todos: keep one canonical task source, record due dates and stale items.
-- Email: summarize and draft first; send only after explicit approval.
-- Files: prefer workspace-scoped reads and writes; never search secrets casually.
-- Coding nodes: use the main agent as coordinator; nodes execute bounded tasks.
-- Automations: start with weekly reviews and reminders before always-on actions.
-- Morning brief: run by cron at 07:30 Europe/Copenhagen with narrow read-only Google Workspace authority.
-- Commitment tracking: maintain local files under `memory/commitments/`; surface due and waiting items in the morning brief.
-- Belief accountability: run a Friday cron through the `belief` agent; remind Kristian only if no qualifying belief work happened that week.
-
-## Repository Boundary
-
-Tracked files should be safe to push to a private GitHub repository. Machine state, auth profiles, tokens, credentials, and runtime logs belong in `.openclaw/` or `~/.openclaw/`, not in this repo.
+`archive/memory-old/`, `archive/memory-wiki-old/`, `archive/belief-system-old/`,
+`archive/templates-old/` hold the previous structure for reference. They are
+**not** indexed by the Cognee plugin and **not** loaded by the agent. Content
+is migrated forward only when Kristian explicitly names it.

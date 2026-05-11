@@ -44,7 +44,7 @@ Cleaned from ~2.6 GB down to ~26 MB.
 
 ## Agents Configured
 
-- **main** — Personal/Coder OC (primary workspace)
+- **main** — Companion (primary workspace)
 - **belief** — Belief Agent (separate workspace)
 
 ## Post-Migration

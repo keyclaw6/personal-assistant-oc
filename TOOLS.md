@@ -1,110 +1,91 @@
-# TOOLS.md - Local Setup Notes
+# TOOLS.md — Tooling
 
 ## OpenClaw
 
 - CLI: `openclaw`
-- Gateway dashboard: use `openclaw dashboard`
-- Local gateway URL: `http://127.0.0.1:18789/`
-- Default model currently configured by OpenClaw: `openai-codex/gpt-5.5`
-- Auth: Codex OAuth through the `openai-codex` provider.
-- Check model/auth state: `openclaw models status --json`
-- Check runtime state: `openclaw status --json`
+- Dashboard: `openclaw dashboard`
+- Local gateway: `http://127.0.0.1:18789/`
+- Status: `openclaw status --json`
+- Models status: `openclaw models status --json`
+- Plugins list: `openclaw plugins list`
 - Security audit: `openclaw security audit --deep`
 
-## Memory Maintenance
+## LLM and embeddings
 
-- Agent-facing search: `npm run mem -- search "query"`
-- Agent-facing fetch: `npm run mem -- get <id-or-path>`
-- Agent-facing capture: `npm run mem -- put --type observation --title "Short title" --summary "What should be remembered"`
-- Agent-facing health check: `npm run mem -- check`
-- Maintenance refresh: `npm run mem -- refresh`
-- Compile digest directly: `npm run memory:compile`
-- Report stale/conflicting memory directly: `npm run memory:report`
-- Smoke test capture/privacy behavior: `npm run memory:smoke`
-- Full local repo check: `npm run check`
+- **Provider:** OpenRouter (single API key for everything possible).
+- **Chat model:** DeepSeek high-reasoning variant via OpenRouter (slug
+  confirmed at execution time).
+- **Embeddings (primary):** OpenRouter embedding model.
+- **Embeddings (fallback):** Ollama + `nomic-embed-text` local
+  (`http://localhost:11434`).
+- Config lives in `.env.cognee` at repo root (gitignored).
 
-## Search
+## Memory plugin
 
-Use `rg` first when it is available:
+- `@cognee/cognee-openclaw` (manifest id `memory-cognee`).
+- Indexes `MEMORY.md` and `memory/` into LanceDB (vectors) + Kuzu (graph) +
+  SQLite (relational), under `.cognee_system/` (gitignored).
+- Pre-run context injection is automatic. The agent does not call Cognee
+  directly. Writing/editing/deleting files in `memory/` triggers re-sync.
+- Setup notes: `docs/cognee-setup.md`.
 
-```powershell
-rg -n "keyword" memory-wiki memory
-```
+## Messenger plugin
 
-Fallback on Windows:
+- Path: `plugins/openclaw-messenger/`.
+- Primary user channel via Meta Graph API.
+- Webhook smoke test:
+  ```bash
+  curl 'http://127.0.0.1:18789/messenger/webhook?hub.mode=subscribe&hub.verify_token=TEST&hub.challenge=abc123'
+  ```
+- Public exposure (deferred): Tailscale Funnel — see plugin README.
 
-```powershell
-Get-ChildItem memory-wiki,memory -Recurse -File | Select-String -Pattern "keyword"
-```
+## Google Workspace (`gog`)
 
-## Secrets
+Primary CLI for Gmail, Calendar, Drive, Contacts/People, Tasks reads.
 
-Do not commit API keys, tokens, passwords, cookies, private SSH keys, or OpenClaw runtime config files.
-
-## Google Workspace
-
-Primary CLI entrypoint is ClawHub/OpenClaw `gog`:
-
-```powershell
+```bash
 gog --help
 gog auth status --json --no-input
 gog schema --json --no-input
 ```
 
-Useful safety flags:
+Safety flags:
 
 - `--json --no-input` for scripted reads.
-- `--gmail-no-send` for Gmail triage/draft workflows.
-- `--dry-run` before supported write actions.
-- `--enable-commands` / `--disable-commands` to narrow a run's command surface.
+- `--gmail-no-send` for Gmail triage/draft.
+- `--dry-run` before supported writes.
+- `--enable-commands` / `--disable-commands` to narrow the surface.
 
-Setup requires OAuth client credentials stored outside this repository:
+Setup (credentials live outside the repo):
 
-```powershell
-gog auth credentials set C:\path\outside\repo\client_secret.json
+```bash
+gog auth credentials set /path/outside/repo/client_secret.json
 gog auth add you@gmail.com --services gmail,calendar,drive,contacts,tasks,people,docs,sheets --readonly
 ```
 
-Fallback CLI entrypoint:
+Fallback: `scripts/gws.mjs` (`npm run gws -- ...`).
 
-```powershell
-npm run gws -- --help
-```
+## Scheduled jobs
 
-Use `scripts/gws.mjs` instead of raw `npx ... --params` on Windows when passing JSON. Prefer `--params-file` and `--json-file`; inline JSON flags such as `--params-json` are mostly for shells with reliable quoting.
-
-```powershell
-@'
-{"calendarId":"primary","maxResults":10}
-'@ | Set-Content -LiteralPath .gws-params.json -Encoding UTF8
-npm run gws -- calendar events list --params-file .gws-params.json
-Remove-Item -LiteralPath .gws-params.json -Force
-```
-
-OpenClaw Gmail webhook helper:
-
-```powershell
-openclaw webhooks gmail setup --account you@example.com --tailscale serve --json
-openclaw webhooks gmail run --account you@example.com --tailscale serve
-```
-
-Google Workspace credentials and exported auth files must live outside this repository.
-
-Authenticate locally:
-
-```powershell
-npm run gws -- auth login
-```
-
-## Proactive Jobs
-
-List scheduled jobs:
-
-```powershell
+```bash
 openclaw cron list --json
 ```
 
-Expected jobs:
+Expected:
 
-- `morning-brief`: daily at 07:30 Europe/Copenhagen.
-- `friday-belief-check`: Friday at 17:00 Europe/Copenhagen.
+- `morning-brief` — daily 07:30 Europe/Copenhagen.
+
+(`friday-belief-check` is removed in the pivot.)
+
+## Secrets
+
+Do not commit: API keys, tokens, passwords, cookies, private SSH keys,
+OpenClaw runtime config, `.env.cognee`, OAuth credentials, `.cognee_system/`.
+
+## Search
+
+Use `rg` for local search:
+
+```bash
+rg -n "keyword" memory/ MEMORY.md PHILOSOPHY.md
+```

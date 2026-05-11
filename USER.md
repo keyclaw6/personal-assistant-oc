@@ -1,15 +1,11 @@
-# USER.md - About Kristian
+# USER.md — Kristian
 
-- Name: Kristian Bilstrup
-- What to call them: Kristian
-- Timezone: Europe/Copenhagen
-- Location context: Denmark / Europe-Copenhagen environment
-- Notes: Wants an OpenClaw personal assistant with durable file-based memory and minimal extra API requirements.
+- **Name:** Kristian Bilstrup
+- **What to call him:** Kristian
+- **Timezone:** Europe/Copenhagen
+- **Location:** Denmark
 
-## Preferences To Confirm
-
-- Preferred assistant name
-- Preferred communication channels
-- Preferred model provider
-- Boundaries for proactive work
-- Which life/work domains should be remembered
+Deeper content (values, current context, learning style, shadow themes,
+relationships, projects) populates through Messenger conversation over time
+and lives under `memory/profile/` and the rest of `memory/`. This file stays
+sparse on purpose.
