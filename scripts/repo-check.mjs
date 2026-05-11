@@ -55,10 +55,13 @@ for (const f of files) {
   }
 }
 
-// 2. No node_modules or dist under plugins/
+// 2. No node_modules or dist under plugins/ (except openclaw-messenger/dist/ — committed intentionally)
 for (const f of files) {
-  if (f.startsWith("plugins/") && (f.includes("/node_modules/") || f.includes("/dist/"))) {
-    errors.push(`${f}: build/dependency artifact should not be committed`);
+  if (f.startsWith("plugins/") && f.includes("/node_modules/")) {
+    errors.push(`${f}: dependency artifact should not be committed`);
+  }
+  if (f.startsWith("plugins/") && f.includes("/dist/") && !f.startsWith("plugins/openclaw-messenger/dist/")) {
+    errors.push(`${f}: build artifact should not be committed`);
   }
 }
 
