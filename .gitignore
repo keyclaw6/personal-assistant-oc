@@ -29,6 +29,15 @@ memory/_compiled/MAINTENANCE_PROMPT.md
 # Dependencies
 node_modules/
 
+# Build artifacts
+dist/
+build/
+*.log
+
+# Cognee runtime state (per IMPLEMENTATION_PLAN.md Phase 7)
+.cognee_system/
+.env.cognee
+
 # OS/editor noise
 .DS_Store
 Thumbs.db
