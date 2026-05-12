@@ -5,6 +5,9 @@
 *.secret
 *.key
 *.pem
+secrets/*
+!secrets/.gitkeep
+!secrets/*.enc.json
 
 # OpenClaw machine state
 .openclaw/

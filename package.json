@@ -9,6 +9,8 @@
     "brief": "node scripts/morning-brief.mjs",
     "brief:dry": "node scripts/morning-brief.mjs --dry-run",
     "cognee": "bash scripts/cognee-server.sh",
+    "secrets:export": "node scripts/secrets-export.mjs",
+    "secrets:import": "node scripts/secrets-import.mjs",
     "repo:check": "node scripts/repo-check.mjs",
     "check": "npm run repo:check"
   },

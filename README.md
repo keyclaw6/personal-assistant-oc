@@ -77,10 +77,36 @@ openclaw plugins list   # verify cognee-openclaw is enabled
 openclaw gateway restart
 ```
 
+## Portable secrets
+
+Plaintext credentials are not committed. The portable path is an encrypted
+bundle at `secrets/openclaw-secrets.enc.json`, which can contain the live
+OpenClaw config (`~/.openclaw/openclaw.json`) and local env files such as
+`.env.cognee`.
+
+Export from this computer:
+
+```bash
+OPENCLAW_SECRETS_PASSPHRASE_FILE=secrets/openclaw-secrets.passphrase npm run secrets:export
+git add secrets/openclaw-secrets.enc.json && git commit -m "Update encrypted OpenClaw secrets"
+```
+
+Restore on another computer after cloning:
+
+```bash
+OPENCLAW_SECRETS_PASSPHRASE_FILE=/path/to/openclaw-secrets.passphrase npm run secrets:import
+openclaw gateway restart
+```
+
+Keep `secrets/openclaw-secrets.passphrase` outside git, preferably in a
+password manager. Without that passphrase, the committed encrypted bundle is
+not recoverable.
+
 ## Security defaults
 
-- Private GitHub repo. `memory/` is committed; secrets, tokens, OAuth
-  credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
+- Private GitHub repo. `memory/` is committed; plaintext secrets, tokens,
+  OAuth credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
+  Portable secrets go only in the encrypted bundle above.
 - Gateway bound to loopback unless a documented remote-access plan exists.
 - External content (emails, attachments, web pages, transcripts, books) is
   treated as untrusted input.
