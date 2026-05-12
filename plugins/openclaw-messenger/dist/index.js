@@ -1,7 +1,9 @@
 import { defineChannelPluginEntry } from "openclaw/plugin-sdk/channel-core";
+import { dispatchInboundMessageWithDispatcher } from "openclaw/plugin-sdk/reply-runtime";
 import { messengerPlugin } from "./src/channel.js";
-import { resolveAccountFromEnv } from "./src/accounts.js";
+import { DEFAULT_ACCOUNT_ID, resolveAccountFromEnv } from "./src/accounts.js";
 import { validateSignature } from "./src/signature.js";
+import { sendText } from "./src/send.js";
 const plugin = defineChannelPluginEntry({
     id: "messenger",
     name: "Messenger",
@@ -55,6 +57,7 @@ const plugin = defineChannelPluginEntry({
                         res.end("Not a page webhook");
                         return true;
                     }
+                    api.logger?.info?.(`messenger webhook received: entries=${parsed.entry?.length ?? 0}`);
                     res.writeHead(200);
                     res.end("OK");
                     for (const entry of parsed.entry ?? []) {
@@ -70,13 +73,44 @@ const plugin = defineChannelPluginEntry({
                             if (!text)
                                 continue;
                             try {
-                                await api.runtime?.channel?.dispatch?.({
-                                    channel: "messenger",
-                                    from: `messenger:${senderId}`,
-                                    body: text,
-                                    timestamp: event.timestamp,
-                                    messageId: event.message?.mid,
+                                const from = `messenger:${senderId}`;
+                                await dispatchInboundMessageWithDispatcher({
+                                    cfg,
+                                    ctx: {
+                                        Body: text,
+                                        BodyForAgent: text,
+                                        RawBody: text,
+                                        CommandBody: text.trim(),
+                                        BodyForCommands: text.trim(),
+                                        From: from,
+                                        To: from,
+                                        SessionKey: `messenger:dm:${senderId}`,
+                                        AccountId: DEFAULT_ACCOUNT_ID,
+                                        ChatType: "direct",
+                                        ConversationLabel: `Messenger ${senderId}`,
+                                        SenderId: senderId,
+                                        Provider: "messenger",
+                                        Surface: "messenger",
+                                        MessageSid: event.message?.mid,
+                                        Timestamp: event.timestamp,
+                                        OriginatingChannel: "messenger",
+                                        OriginatingTo: from,
+                                        NativeChannelId: senderId,
+                                        CommandAuthorized: true,
+                                    },
+                                    dispatcherOptions: {
+                                        deliver: async (payload) => {
+                                            const replyText = payload?.text?.trim?.() ?? "";
+                                            if (!replyText)
+                                                return;
+                                            await sendText(from, replyText, account);
+                                        },
+                                        onError: (err) => {
+                                            api.logger?.error?.(`messenger reply delivery error: ${String(err)}`);
+                                        },
+                                    },
                                 });
+                                api.logger?.info?.(`messenger message dispatched from ${senderId}`);
                             }
                             catch (err) {
                                 api.logger?.error?.(`messenger dispatch error: ${String(err)}`);

@@ -1,5 +1,5 @@
 import { createChatChannelPlugin, createChannelPluginBase } from "openclaw/plugin-sdk/channel-core";
-import { resolveAccountFromEnv, type ResolvedAccount } from "./accounts.js";
+import { DEFAULT_ACCOUNT_ID, resolveAccountFromEnv, type ResolvedAccount } from "./accounts.js";
 import { sendText, sendMedia, sendSenderAction } from "./send.js";
 
 type Cfg = { channels?: Record<string, any> };
@@ -15,6 +15,18 @@ export const messengerPlugin = createChatChannelPlugin({
       docsLabel: "messenger",
       blurb: "Facebook Messenger bot via Meta Graph API.",
     },
+    config: {
+      listAccountIds: (cfg: Cfg) => resolveAccountFromEnv(cfg).pageAccessToken ? [DEFAULT_ACCOUNT_ID] : [],
+      defaultAccountId: () => DEFAULT_ACCOUNT_ID,
+      hasConfiguredState: ({ env }: any) => typeof env?.MESSENGER_PAGE_ACCESS_TOKEN === "string" && env.MESSENGER_PAGE_ACCESS_TOKEN.trim().length > 0,
+      isConfigured: (account: ResolvedAccount) => Boolean(account.pageAccessToken?.trim()),
+      describeAccount: (account: ResolvedAccount) => ({
+        accountId: account.accountId,
+        enabled: account.enabled,
+        configured: Boolean(account.pageAccessToken?.trim()),
+        tokenStatus: account.pageAccessToken ? "available" : "missing",
+      }),
+    } as any,
     setup: {
       resolveAccountId: (cfg: Cfg, accountId?: string | null) =>
         resolveAccountFromEnv(cfg, accountId ?? undefined),
