@@ -1,24 +1,26 @@
 # personal-assistant-oc — Companion
 
-Private OpenClaw workspace for **Companion**, Kristian Bilstrup's personal
-agent. One agent, three intertwined responsibilities: life ops, belief
-change, and shadow / self-knowledge work.
+Private repository for **Companion**, Kristian Bilstrup's personal OpenClaw
+agent. The runtime workspace lives in `companion/`; repo-root files are
+maintenance code, docs, plugins, and setup.
 
-**Read [`PHILOSOPHY.md`](./PHILOSOPHY.md) first.** It is the stable center
-of this project. Every architectural decision below traces back to it.
+**Read [`companion/PHILOSOPHY.md`](./companion/PHILOSOPHY.md) first.** It is
+the stable center of this project. Every architectural decision below traces
+back to it.
 
 ## What this is
 
 - A single personal agent — placeholder name *Companion* — accessed through
   Facebook Messenger. OpenClaw dashboard / CLI are maintenance-only.
-- File-first memory under `memory/`. Plain Markdown, hand-editable, portable.
+- File-first memory under `companion/memory/`. Plain Markdown, hand-editable,
+  portable.
 - The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id
   `cognee-openclaw`) sits on top, indexing those files into a knowledge graph
   (Kuzu) + vector store (LanceDB) and injecting retrieval results before
   each agent run.
 - LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
 - Active-interlocutor posture: not a mirror, not an oracle. See
-  `PHILOSOPHY.md` and `SOUL.md`.
+  `companion/PHILOSOPHY.md` and `companion/SOUL.md`.
 
 ## What this is not
 
@@ -31,13 +33,14 @@ of this project. Every architectural decision below traces back to it.
 
 | Path | What |
 | --- | --- |
-| `PHILOSOPHY.md` | Root statement of intent. Read first. |
-| `IDENTITY.md`, `SOUL.md`, `USER.md`, `AGENTS.md`, `TOOLS.md`, `MEMORY.md`, `HEARTBEAT.md` | Operating rules. |
+| `companion/` | Actual OpenClaw runtime workspace. |
+| `companion/PHILOSOPHY.md` | Root statement of intent. Read first. |
+| `companion/IDENTITY.md`, `companion/SOUL.md`, `companion/USER.md`, `companion/AGENTS.md`, `companion/TOOLS.md`, `companion/MEMORY.md`, `companion/HEARTBEAT.md` | Runtime bootstrap files loaded by OpenClaw. |
 | `IMPLEMENTATION_PLAN.md` | The pivot plan. |
-| `memory/` | All durable knowledge (files are source of truth). |
+| `companion/memory/` | All durable knowledge (files are source of truth). |
+| `companion/skills/` | Workspace skills: `gog`, `google_workspace_assistant`. |
 | `plugins/openclaw-messenger/` | Facebook Messenger channel plugin. |
 | `scripts/` | Local maintenance (`gws.mjs`, `morning-brief.mjs`, `repo-check.mjs`). |
-| `skills/` | `gog`, `google_workspace_assistant`. |
 | `docs/` | Architecture, Cognee setup, OpenClaw setup, security, integrations. |
 | `openclaw-config/` | OpenClaw instance config. |
 | `archive/` | Previous structures (memory-old, memory-wiki-old, belief-system-old, templates-old). Reference only; not indexed. |
@@ -62,10 +65,10 @@ Requires Node `>=22.14.0`.
 npm run check
 ```
 
-Set this repo as the OpenClaw workspace:
+Set the Companion runtime folder as the OpenClaw workspace:
 
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
 ```
 
 Install the memory plugin (see `docs/cognee-setup.md` for the full path,
@@ -104,7 +107,7 @@ not recoverable.
 
 ## Security defaults
 
-- Private GitHub repo. `memory/` is committed; plaintext secrets, tokens,
+- Private GitHub repo. `companion/memory/` is committed; plaintext secrets, tokens,
   OAuth credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
   Portable secrets go only in the encrypted bundle above.
 - Gateway bound to loopback unless a documented remote-access plan exists.

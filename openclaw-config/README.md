@@ -12,7 +12,7 @@ managed via `openclaw config set`. This file documents the intended shape.
 
 1. **Set workspace path**:
    ```bash
-   openclaw config set agents.defaults.workspace "/path/to/personal-assistant-oc"
+   openclaw config set agents.defaults.workspace "/path/to/personal-assistant-oc/companion"
    ```
 
 2. **Regenerate auth tokens**:

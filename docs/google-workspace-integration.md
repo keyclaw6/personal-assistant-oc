@@ -5,7 +5,7 @@ Drive, Contacts, Tasks, Sheets, and Docs.
 
 ## Tooling
 
-Primary: the `gog` CLI (installed via `skills/gog/`).
+Primary: the `gog` CLI (installed via `companion/skills/gog/`).
 
 ```bash
 gog --help

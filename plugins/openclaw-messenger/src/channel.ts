@@ -16,6 +16,7 @@ export const messengerPlugin = createChatChannelPlugin({
       blurb: "Facebook Messenger bot via Meta Graph API.",
     },
     config: {
+      resolveAccount: (cfg: Cfg, accountId?: string | null) => resolveAccountFromEnv(cfg, accountId ?? undefined),
       listAccountIds: (cfg: Cfg) => resolveAccountFromEnv(cfg).pageAccessToken ? [DEFAULT_ACCOUNT_ID] : [],
       defaultAccountId: () => DEFAULT_ACCOUNT_ID,
       hasConfiguredState: ({ env }: any) => typeof env?.MESSENGER_PAGE_ACCESS_TOKEN === "string" && env.MESSENGER_PAGE_ACCESS_TOKEN.trim().length > 0,

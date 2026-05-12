@@ -330,11 +330,11 @@ If mismatch is present, manually edit `~/.openclaw/openclaw.json` so `plugins.en
 The plugin scans `workspaceDir/MEMORY.md` and `workspaceDir/memory/`. Confirm OpenClaw's workspace is set to this repo root:
 ```bash
 openclaw config get agents.defaults.workspace
-# Expected: /home/kab/personal-assistant-oc
+# Expected: /home/kab/personal-assistant-oc/companion
 ```
 If not, set it:
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
 ```
 
 ### 3.4 Configure Cognee env (OpenRouter primary path)

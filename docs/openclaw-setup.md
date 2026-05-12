@@ -1,9 +1,9 @@
 # OpenClaw Setup
 
-## Use This Repo As Workspace
+## Use The Companion Folder As Workspace
 
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
 openclaw gateway restart
 ```
 
@@ -31,7 +31,9 @@ openclaw cognee index
 
 ## Daily Memory Commands
 
-Memory is file-first. Write Markdown files under `memory/`. The Cognee plugin indexes them automatically.
+Memory is file-first. Write Markdown files under `companion/memory/` (or
+`memory/` from inside the configured OpenClaw workspace). The Cognee plugin
+indexes them automatically.
 
 ```bash
 openclaw cognee status    # check sync state
@@ -41,7 +43,8 @@ npm run check             # repo hygiene
 
 ## Google Workspace Skill
 
-The primary Google Workspace integration is the ClawHub/OpenClaw `gog` skill installed in `skills/gog/`.
+The primary Google Workspace integration is the ClawHub/OpenClaw `gog` skill
+installed in `companion/skills/gog/`.
 
 Verify the skill and binary:
 

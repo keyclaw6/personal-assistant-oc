@@ -1,7 +1,7 @@
 {
     "agents": {
         "defaults": {
-            "workspace": "<UPDATE_ON_NEW_MACHINE>",
+            "workspace": "<UPDATE_ON_NEW_MACHINE>/companion",
             "models": {
                 "openrouter/deepseek/deepseek-v4-flash": {}
             },

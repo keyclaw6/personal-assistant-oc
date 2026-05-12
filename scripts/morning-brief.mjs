@@ -15,6 +15,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
+const WORKSPACE = path.join(REPO, "companion");
 const DRY_RUN = process.argv.includes("--dry-run");
 const today = new Date().toISOString().slice(0, 10);
 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -22,7 +23,7 @@ const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function read(file) {
-  const p = path.join(REPO, file);
+  const p = path.join(WORKSPACE, file);
   return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
 
@@ -139,7 +140,7 @@ if (yesterdayClarification.trim()) {
 
 // ── output ───────────────────────────────────────────────────────────────────
 
-const briefingsDir = path.join(REPO, "memory/life/briefings");
+const briefingsDir = path.join(WORKSPACE, "memory/life/briefings");
 const briefPath = path.join(briefingsDir, `${today}.md`);
 
 if (DRY_RUN) {

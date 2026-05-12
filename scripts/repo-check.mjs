@@ -7,9 +7,9 @@
  * 2. No .env files committed (except .env.template).
  * 3. No node_modules/ or dist/ committed under plugins/.
  * 4. .cognee_system/ and .cognee_data/ are gitignored.
- * 5. Top-level identity files are non-empty.
- * 6. memory/ tree exists with expected subdirectories.
- * 7. memory/profile/belief-philosophy.md contains the Perceived Best Option Principle.
+ * 5. Companion runtime identity files are non-empty.
+ * 6. companion/memory/ tree exists with expected subdirectories.
+ * 7. companion/memory/profile/belief-philosophy.md contains the Perceived Best Option Principle.
  */
 
 import { execFileSync } from "node:child_process";
@@ -17,6 +17,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
+const COMPANION = "companion";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,10 @@ function trackedFiles() {
 function read(file) {
   const p = path.join(REPO, file);
   return existsSync(p) ? readFileSync(p, "utf8") : "";
+}
+
+function companionPath(file) {
+  return path.join(COMPANION, file);
 }
 
 function isGitignored(pattern) {
@@ -73,7 +78,7 @@ if (!isGitignored(".cognee_data/")) {
   errors.push(".cognee_data/ is not gitignored");
 }
 
-// 4. Top-level identity files non-empty
+// 4. Companion runtime identity files non-empty
 const identityFiles = [
   "IDENTITY.md",
   "SOUL.md",
@@ -82,14 +87,20 @@ const identityFiles = [
   "TOOLS.md",
   "MEMORY.md",
   "HEARTBEAT.md",
-  "README.md",
   "PHILOSOPHY.md",
 ];
 for (const f of identityFiles) {
-  const content = read(f);
+  const content = read(companionPath(f));
   if (!content.trim()) {
-    errors.push(`${f}: identity file is empty`);
+    errors.push(`${companionPath(f)}: identity file is empty`);
   }
+}
+
+if (!read("README.md").trim()) {
+  errors.push("README.md: repo overview is empty");
+}
+if (existsSync(path.join(REPO, "AGENTS.md"))) {
+  errors.push("AGENTS.md: root AGENTS.md should not exist; runtime rules live in companion/AGENTS.md");
 }
 
 // 5. memory/ tree exists
@@ -102,25 +113,26 @@ const memoryDirs = [
   "memory/sources",
 ];
 for (const dir of memoryDirs) {
-  if (!existsSync(path.join(REPO, dir))) {
-    errors.push(`${dir}/: expected memory subdirectory missing`);
+  if (!existsSync(path.join(REPO, COMPANION, dir))) {
+    errors.push(`${companionPath(dir)}/: expected memory subdirectory missing`);
   }
 }
 
 // 6. belief-philosophy.md contains the Perceived Best Option Principle
-const bp = read("memory/profile/belief-philosophy.md");
+const bp = read(companionPath("memory/profile/belief-philosophy.md"));
 if (!bp.includes("Perceived Best Option")) {
-  errors.push("memory/profile/belief-philosophy.md: missing Perceived Best Option Principle");
+  errors.push("companion/memory/profile/belief-philosophy.md: missing Perceived Best Option Principle");
 }
 
 // 7. conflicts.md exists
-if (!existsSync(path.join(REPO, "memory/conflicts.md"))) {
-  errors.push("memory/conflicts.md: missing");
+if (!existsSync(path.join(REPO, COMPANION, "memory/conflicts.md"))) {
+  errors.push("companion/memory/conflicts.md: missing");
 }
 
 // 8. Secret patterns in tracked text files
 const secretPatterns = [
   { name: "OpenRouter API key", pattern: /sk-or-v1-[A-Za-z0-9]{20,}/ },
+  { name: "Tavily API key", pattern: /tvly-[A-Za-z0-9_-]{20,}/ },
   { name: "OpenAI-style secret", pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
   { name: "Anthropic-style secret", pattern: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/ },
   { name: "GitHub token", pattern: /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/ },

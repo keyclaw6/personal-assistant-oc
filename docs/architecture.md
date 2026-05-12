@@ -1,15 +1,15 @@
 # Architecture — Companion
 
-> Single personal agent for Kristian Bilstrup. One agent, one workspace,
+> Single personal agent for Kristian Bilstrup. One agent, one runtime workspace,
 > three intertwined responsibilities: life ops, belief change, shadow /
-> self-knowledge. Read `PHILOSOPHY.md` before this doc.
+> self-knowledge. Read `companion/PHILOSOPHY.md` before this doc.
 
 ## Shape
 
 ```
 Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single agent)
                                 │
-                                ├─ cognee-openclaw plugin  ── reads/indexes ─▶  memory/ + MEMORY.md
+                                ├─ cognee-openclaw plugin  ── reads/indexes ─▶  companion/memory/ + companion/MEMORY.md
                                 │                            (LanceDB + Kuzu + SQLite under .cognee_system/)
                                 │
                                 ├─ openclaw-messenger plugin  ── primary channel
@@ -17,12 +17,14 @@ Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single ag
                                 └─ scripts/morning-brief.mjs  ── 07:30 Europe/Copenhagen cron
 ```
 
-- **One workspace:** `/home/kab/personal-assistant-oc`. No second agent. No
-  belief sub-workspace; belief content lives under `memory/beliefs/` in this
-  same workspace and is read by the same agent.
+- **One runtime workspace:** `/home/kab/personal-assistant-oc/companion`. No
+  second agent. No belief sub-workspace; belief content lives under
+  `memory/beliefs/` inside that runtime workspace and is read by the same
+  agent.
 - **Files are source of truth.** Everything durable is Markdown under
-  `memory/`. The Cognee plugin sits on top to index and inject retrieval
-  context; if it disappeared tomorrow, no durable knowledge would be lost.
+  `companion/memory/`. The Cognee plugin sits on top to index and inject
+  retrieval context; if it disappeared tomorrow, no durable knowledge would be
+  lost.
 - **OpenRouter** is the LLM provider (single API key). DeepSeek high-reasoning
   for chat. OpenRouter embeddings primary, Ollama `nomic-embed-text`
   fallback.
@@ -32,7 +34,7 @@ Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single ag
 ## Memory directory
 
 ```
-memory/
+companion/memory/
 ├── profile/        values, current-context, learning-style, shadow-themes, belief-philosophy
 ├── beliefs/        _index.md + <slug>.md per belief (frontmatter: stage, started, last_touched, completion)
 ├── shadow/         <pattern-slug>.md (frontmatter: framing, confidence, first/last_observed)
@@ -56,7 +58,7 @@ Kristian owns belief-completion marks. The agent may recommend
 ## Two-pass session discipline
 
 Live Messenger conversation is interpretive and warm. After the session ends
-(5+ minute pause), two files land under `memory/sessions/YYYY-MM-DD/`:
+(5+ minute pause), two files land under `companion/memory/sessions/YYYY-MM-DD/`:
 
 1. `transcript.md` — raw, unedited.
 2. `clarification.md` — deterministic, fact-only summary.
@@ -67,7 +69,8 @@ Later pattern analysis reads only clarifications. Never live impressions.
 
 Daily 07:30 Europe/Copenhagen via Messenger. Falls back to Android
 `system.notify` on Kristian's S22; final fallback writes
-`memory/life/briefings/YYYY-MM-DD.md` and surfaces in the next heartbeat.
+`companion/memory/life/briefings/YYYY-MM-DD.md` and surfaces in the next
+heartbeat.
 
 Sections: schedule, priorities, commitments, beliefs in progress, captured
 yesterday, mail headline.

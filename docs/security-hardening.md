@@ -43,7 +43,7 @@ If `openclaw security audit --deep` asks for the Gateway token, do not paste or 
 
 - Do not store API keys, passwords, cookies, private keys, session tokens, or OAuth tokens in memory.
 - Use `<private>...</private>` blocks only for sensitive notes that should be stripped from compiled artifacts.
-- Conflicts go to `memory/conflicts.md`; do not silently overwrite old claims.
+- Conflicts go to `companion/memory/conflicts.md`; do not silently overwrite old claims.
 - `.cognee_system/`, `.cognee_data/`, `.env.cognee` are gitignored.
 
 ## Git Policy
