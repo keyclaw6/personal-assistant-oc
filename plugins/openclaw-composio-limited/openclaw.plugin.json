@@ -1,0 +1,11 @@
+{
+  "id": "composio-limited",
+  "kind": "tool",
+  "name": "Composio Limited",
+  "description": "Restricted Composio tools for Gmail, Calendar, Google Tasks, and LinkedIn.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

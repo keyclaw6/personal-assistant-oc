@@ -1,0 +1,10 @@
+{
+  "name": "openclaw-composio-limited",
+  "version": "1.0.0",
+  "description": "Restricted Composio tools for OpenClaw",
+  "type": "module",
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "runtimeExtensions": ["./index.js"]
+  }
+}
