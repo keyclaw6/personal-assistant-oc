@@ -3,10 +3,37 @@ import { dispatchInboundMessageWithDispatcher } from "openclaw/plugin-sdk/reply-
 import { messengerPlugin } from "./src/channel.js";
 import { DEFAULT_ACCOUNT_ID, resolveAccountFromEnv } from "./src/accounts.js";
 import { validateSignature } from "./src/signature.js";
-import { sendText } from "./src/send.js";
+import { normalizeMessengerInbound } from "./src/inbound.js";
+import { downloadMessengerMedia } from "./src/media-download.js";
+import { sendMedia, sendText } from "./src/send.js";
 
 function elapsed(start: number): number {
   return Date.now() - start;
+}
+
+function outboundMediaUrls(payload: any): string[] {
+  const urls: string[] = [];
+  if (typeof payload?.mediaUrl === "string" && payload.mediaUrl) urls.push(payload.mediaUrl);
+  if (Array.isArray(payload?.mediaUrls)) {
+    for (const url of payload.mediaUrls) {
+      if (typeof url === "string" && url) urls.push(url);
+    }
+  }
+  return urls;
+}
+
+function messengerSendMediaType(mediaType?: string): string {
+  const normalized = (mediaType ?? "").toLowerCase();
+  if (!normalized) return "image";
+  if (normalized.startsWith("image/") || normalized === "image") return "image";
+  if (normalized.startsWith("video/") || normalized === "video") return "video";
+  if (normalized.startsWith("audio/") || normalized === "audio") return "audio";
+  return "file";
+}
+
+function mediaMaxBytes(cfg: any): number {
+  const mediaMaxMb = Number(cfg.channels?.messenger?.mediaMaxMb ?? 25);
+  return (Number.isFinite(mediaMaxMb) && mediaMaxMb > 0 ? mediaMaxMb : 25) * 1024 * 1024;
 }
 
 const plugin: any = defineChannelPluginEntry({
@@ -66,16 +93,25 @@ const plugin: any = defineChannelPluginEntry({
           for (const entry of parsed.entry ?? []) {
             for (const event of entry.messaging ?? []) {
               if (event.message?.is_echo) continue;
-              if (!event.message && !event.postback) continue;
               const senderId = event.sender?.id;
               if (!senderId) continue;
-              const text = event.message?.text ?? event.postback?.title ?? "";
-              if (!text) continue;
+              const inbound = normalizeMessengerInbound(event);
+              if (!inbound) continue;
+              const text = inbound.text;
 
               try {
                 const from = `messenger:${senderId}`;
                 const dispatchStartedAt = Date.now();
-                api.logger?.info?.(`messenger timing: dispatch start +${elapsed(requestStartedAt)}ms sender=${senderId}`);
+                const mediaDownload = inbound.mediaUrls.length > 0
+                  ? await downloadMessengerMedia(inbound.mediaUrls, inbound.mediaTypes, { maxBytes: mediaMaxBytes(cfg) })
+                  : { paths: [], mediaPaths: [], mediaTypes: [], dir: undefined, errors: [] };
+                if (inbound.mediaUrls.length > 0) {
+                  api.logger?.info?.(`messenger media download: success=${mediaDownload.paths.length} failed=${mediaDownload.errors.length}`);
+                  for (const failure of mediaDownload.errors) {
+                    api.logger?.warn?.(`messenger media download failed url=${failure.url}: ${failure.error}`);
+                  }
+                }
+                api.logger?.info?.(`messenger timing: dispatch start +${elapsed(requestStartedAt)}ms sender=${senderId} media=${inbound.mediaUrls.length} sticker=${Boolean(inbound.sticker)} reaction=${Boolean(inbound.untrustedStructuredContext?.length)}`);
                 await dispatchInboundMessageWithDispatcher({
                   cfg,
                   ctx: {
@@ -93,21 +129,49 @@ const plugin: any = defineChannelPluginEntry({
                     SenderId: senderId,
                     Provider: "messenger",
                     Surface: "messenger",
-                    MessageSid: event.message?.mid,
+                    MessageSid: inbound.messageSid,
                     Timestamp: event.timestamp,
                     OriginatingChannel: "messenger",
                     OriginatingTo: from,
                     NativeChannelId: senderId,
                     CommandAuthorized: true,
+                    ...(inbound.mediaUrls.length > 0 ? {
+                      MediaUrl: inbound.mediaUrls[0],
+                      MediaUrls: inbound.mediaUrls,
+                      MediaType: mediaDownload.mediaTypes[0] || inbound.mediaTypes[0],
+                      MediaTypes: mediaDownload.mediaTypes.length > 0 ? mediaDownload.mediaTypes : inbound.mediaTypes,
+                      ...(mediaDownload.paths.length > 0 ? {
+                        MediaPath: mediaDownload.paths[0],
+                        MediaPaths: mediaDownload.mediaPaths,
+                        MediaDir: mediaDownload.dir,
+                      } : {}),
+                    } : {}),
+                    ...(inbound.sticker ? {
+                      Sticker: { fileId: inbound.sticker },
+                      StickerMediaIncluded: inbound.stickerMediaIncluded,
+                    } : {}),
+                    ...(inbound.untrustedStructuredContext ? {
+                      UntrustedStructuredContext: inbound.untrustedStructuredContext,
+                    } : {}),
                   },
                   dispatcherOptions: {
                     deliver: async (payload: any) => {
                       const replyText = payload?.text?.trim?.() ?? "";
-                      if (!replyText) return;
-                      const sendStartedAt = Date.now();
-                      api.logger?.info?.(`messenger timing: sendText start +${elapsed(requestStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms chars=${replyText.length}`);
-                      await sendText(from, replyText, account);
-                      api.logger?.info?.(`messenger timing: sendText end +${elapsed(requestStartedAt)}ms send=${elapsed(sendStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
+                      if (replyText) {
+                        const sendStartedAt = Date.now();
+                        api.logger?.info?.(`messenger timing: sendText start +${elapsed(requestStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms chars=${replyText.length}`);
+                        await sendText(from, replyText, account);
+                        api.logger?.info?.(`messenger timing: sendText end +${elapsed(requestStartedAt)}ms send=${elapsed(sendStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
+                      }
+                      const mediaUrls = outboundMediaUrls(payload);
+                      const mediaTypes = Array.isArray(payload?.mediaTypes) ? payload.mediaTypes : [];
+                      for (let i = 0; i < mediaUrls.length; i++) {
+                        const mediaType = typeof mediaTypes[i] === "string" ? mediaTypes[i] : payload?.mediaType;
+                        const sendStartedAt = Date.now();
+                        api.logger?.info?.(`messenger timing: sendMedia start +${elapsed(requestStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
+                        await sendMedia(from, mediaUrls[i], account, messengerSendMediaType(mediaType));
+                        api.logger?.info?.(`messenger timing: sendMedia end +${elapsed(requestStartedAt)}ms send=${elapsed(sendStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
+                      }
                     },
                     onError: (err: unknown) => {
                       api.logger?.error?.(`messenger reply delivery error: ${String(err)}`);
