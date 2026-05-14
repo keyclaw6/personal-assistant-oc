@@ -5,6 +5,10 @@ import { DEFAULT_ACCOUNT_ID, resolveAccountFromEnv } from "./src/accounts.js";
 import { validateSignature } from "./src/signature.js";
 import { sendText } from "./src/send.js";
 
+function elapsed(start: number): number {
+  return Date.now() - start;
+}
+
 const plugin: any = defineChannelPluginEntry({
   id: "messenger",
   name: "Messenger",
@@ -35,9 +39,11 @@ const plugin: any = defineChannelPluginEntry({
         }
 
         if (req.method === "POST") {
+          const requestStartedAt = Date.now();
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
           const body = Buffer.concat(chunks).toString("utf-8");
+          api.logger?.info?.(`messenger timing: body read ${elapsed(requestStartedAt)}ms bytes=${body.length}`);
 
           const sig = req.headers["x-hub-signature-256"] as string | undefined;
           if (account.appSecret && sig && !validateSignature(body, sig, account.appSecret)) {
@@ -51,9 +57,11 @@ const plugin: any = defineChannelPluginEntry({
           if (parsed.object !== "page") { res.writeHead(400); res.end("Not a page webhook"); return true; }
 
           api.logger?.info?.(`messenger webhook received: entries=${parsed.entry?.length ?? 0}`);
+          api.logger?.info?.(`messenger timing: parsed+validated ${elapsed(requestStartedAt)}ms entries=${parsed.entry?.length ?? 0}`);
 
           res.writeHead(200);
           res.end("OK");
+          api.logger?.info?.(`messenger timing: ack sent ${elapsed(requestStartedAt)}ms`);
 
           for (const entry of parsed.entry ?? []) {
             for (const event of entry.messaging ?? []) {
@@ -66,6 +74,8 @@ const plugin: any = defineChannelPluginEntry({
 
               try {
                 const from = `messenger:${senderId}`;
+                const dispatchStartedAt = Date.now();
+                api.logger?.info?.(`messenger timing: dispatch start +${elapsed(requestStartedAt)}ms sender=${senderId}`);
                 await dispatchInboundMessageWithDispatcher({
                   cfg,
                   ctx: {
@@ -94,13 +104,17 @@ const plugin: any = defineChannelPluginEntry({
                     deliver: async (payload: any) => {
                       const replyText = payload?.text?.trim?.() ?? "";
                       if (!replyText) return;
+                      const sendStartedAt = Date.now();
+                      api.logger?.info?.(`messenger timing: sendText start +${elapsed(requestStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms chars=${replyText.length}`);
                       await sendText(from, replyText, account);
+                      api.logger?.info?.(`messenger timing: sendText end +${elapsed(requestStartedAt)}ms send=${elapsed(sendStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
                     },
                     onError: (err: unknown) => {
                       api.logger?.error?.(`messenger reply delivery error: ${String(err)}`);
                     },
                   },
                 });
+                api.logger?.info?.(`messenger timing: dispatch end +${elapsed(requestStartedAt)}ms dispatch=${elapsed(dispatchStartedAt)}ms`);
                 api.logger?.info?.(`messenger message dispatched from ${senderId}`);
               } catch (err) {
                 api.logger?.error?.(`messenger dispatch error: ${String(err)}`);
