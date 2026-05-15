@@ -70,3 +70,20 @@ Expected:
 - `morning-brief`: daily at 07:30 Europe/Copenhagen.
 - `evening-journal-reminder`: daily at 21:00 Europe/Copenhagen.
 - `nightly-review` / `nightly-dream-cycle`: nightly local review while Kristian sleeps.
+
+## Context management
+
+The Companion config assumes GPT-5.5 has a 400K window but effectively compacts
+around 260K tokens because OpenAI reserves a large output budget. The repo
+template therefore sets:
+
+- `agents.defaults.compaction.reserveTokensFloor: 140000`
+- `agents.defaults.compaction.memoryFlush.softThresholdTokens: 20000`
+
+That means the memory flush should run before the effective 260K boundary, with
+enough room to write durable notes. Session pruning is enabled to trim old tool
+results without rewriting the transcript. Heartbeat is disabled; scheduled jobs
+handle routine proactive work.
+
+Do not proactively clear/reset context until `jobs/SESSION_CHECKPOINT.md` has
+been run and durable memory has been written.

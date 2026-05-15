@@ -1,6 +1,7 @@
 # HEARTBEAT.md
 
-Heartbeat is intentionally tiny. Do one useful local check, or stay quiet.
+Heartbeat is disabled in normal runtime. If re-enabled later, keep it tiny: do
+one useful local check, or stay quiet.
 
 - Overdue/stale commitments in `memory/life/commitments.md`.
 - Open conflicts in `memory/conflicts.md`.

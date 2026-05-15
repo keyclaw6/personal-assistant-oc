@@ -55,6 +55,9 @@ Write conservatively for interpretations:
 
 Before changing durable memory, read the relevant file first.
 
+Before manual compaction/reset, use `jobs/SESSION_CHECKPOINT.md` if important
+session context has not yet been written to files.
+
 ## Confidence and provenance
 
 For extracted observations, include source/date/confidence when useful:

@@ -70,6 +70,9 @@ Detailed guidance lives in `methods/BELIEF_WORK.md`.
 - If Kristian says something should not be remembered, do not store it.
 - Nightly review is local-only consolidation using `jobs/NIGHTLY_REVIEW.md`.
 - Weekly review is where deeper synthesis belongs; live chat should stay light.
+- Before manual compaction or reset, run `jobs/SESSION_CHECKPOINT.md` if the
+  current session contains commitments, corrections, decisions, or open loops
+  that are not yet written to memory.
 
 ## Books and external content
 

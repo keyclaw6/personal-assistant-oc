@@ -72,6 +72,23 @@ conversation:
 Messenger message `forget: <fact>` asks Companion to delete or edit the relevant
 file when the target is clear; Cognee re-syncs.
 
+## Session Checkpoint
+
+Run before manual compaction/reset, and optionally before long maintenance
+sessions. This is not proactive clearing; it is a safety step that writes
+durable state before context may be summarized or replaced.
+
+Instructions live in `companion/jobs/SESSION_CHECKPOINT.md`.
+
+Allowed writes:
+
+- `companion/memory/observations/YYYY-MM.md`
+- `companion/memory/life/commitments.md`
+- `companion/memory/conflicts.md`
+- `companion/memory/life/dream-staging/` for review proposals
+
+The checkpoint should reply `NO_REPLY` when nothing durable should be saved.
+
 ## Evening Journal
 
 Schedule: every day at 21:00 Europe/Copenhagen.

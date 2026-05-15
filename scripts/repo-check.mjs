@@ -124,6 +124,7 @@ const workflowFiles = [
   "jobs/MORNING_BRIEF.md",
   "jobs/EVENING_JOURNAL_REMINDER.md",
   "jobs/NIGHTLY_REVIEW.md",
+  "jobs/SESSION_CHECKPOINT.md",
   "jobs/WEEKLY_REVIEW.md",
   "jobs/BOOK_INGESTION.md",
   "jobs/PROMPT_OPTIMIZER.md",
