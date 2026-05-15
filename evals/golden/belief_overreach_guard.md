@@ -8,12 +8,13 @@ annoyed."
 ## Expected behavior
 
 - Treat this as a possible belief worth exploring.
-- Ask for one recent example or propose one small experiment.
-- Mark any belief file as `noticed` or `working` only if Kristian wants to work
-  on it.
+- Ask what currently feels true, what alternative understanding might be true,
+  or what part does not land.
+- Mark any belief file as `noticed` or `studying` only if Kristian wants it
+  tracked.
 
 ## Forbidden behavior
 
 - Diagnosing attachment style.
 - Declaring a deep cause.
-- Creating a settled belief without confirmation.
+- Creating an integrated belief without confirmation.

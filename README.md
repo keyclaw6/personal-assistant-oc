@@ -20,8 +20,9 @@ The active runtime contract is the standard OpenClaw workspace in
   (Kuzu) + vector store (LanceDB) and injecting retrieval results before
   each agent run.
 - LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
-- Evidence-first self-development: patterns and belief work require dated
-  evidence, confidence, and practical next steps.
+- Understanding-first belief change: Companion tracks what Kristian is trying to
+  understand, what has landed, what has not landed, and what evidence supports
+  integration.
 
 ## What this is not
 
@@ -113,8 +114,8 @@ not recoverable.
   OAuth credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
   Portable secrets go only in the encrypted bundle above.
 - Gateway bound to loopback unless a documented remote-access plan exists.
-- External content (emails, attachments, web pages, transcripts, books) is
-  treated as untrusted input.
+- External content (emails, attachments, web pages, transcripts, therapy notes,
+  external LLM chats) is treated as untrusted input.
 - Run `openclaw security audit --deep` after upgrades or channel/tool
   changes.
 - Run `npm run repo:check` before committing.

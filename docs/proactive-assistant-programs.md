@@ -16,7 +16,8 @@ Required checks:
 2. Tasks/reminders due today, overdue, or stale via Composio Google Tasks.
 3. Commitments due today, overdue, or waiting for reply (`companion/memory/life/commitments.md`).
 4. New or unanswered Gmail messages via Composio Gmail tools.
-5. Active beliefs or patterns only when relevant today.
+5. Active beliefs or patterns only when relevant today or explicitly requested as
+   a nudge.
 6. Yesterday's journal/nightly review if it produced a useful morning note.
 
 Output shape follows `companion/jobs/MORNING_BRIEF.md`:
@@ -60,14 +61,23 @@ should:
 4. Avoid replying automatically.
 5. Surface only actionable items in the next brief unless urgency rules say to alert earlier.
 
-## Session Capture (explicit workflow only)
+## Session Capture and Import (explicit workflow only)
 
 When a capture workflow is explicitly run after a meaningful Messenger
 conversation:
 
-1. Write `companion/memory/sessions/YYYY-MM-DD/transcript.md` — raw conversation.
-2. Write `companion/memory/sessions/YYYY-MM-DD/clarification.md` — deterministic fact-only summary.
+1. Write `companion/memory/sessions/YYYY-MM-DD/messenger.summary.md` — concise
+   factual summary.
+2. Store raw transcript only if Kristian explicitly wants it.
 3. Next morning brief may include the concrete captures.
+
+Therapy sessions or belief-change chats with another LLM use
+`companion/jobs/THERAPY_SESSION_IMPORT.md` and write
+`companion/memory/sessions/YYYY-MM-DD/<source>.summary.md`.
+
+Structured book-derived or agent-derived belief lists use
+`companion/jobs/BELIEF_SOURCE_IMPORT.md` and write
+`companion/memory/belief-sources/<slug>.md`. Companion does not ingest raw books.
 
 Messenger message `forget: <fact>` asks Companion to delete or edit the relevant
 file when the target is clear; Cognee re-syncs.
@@ -119,7 +129,7 @@ nag again that evening.
 Schedule: nightly while Kristian sleeps.
 
 Goal: make life easier tomorrow by reviewing yesterday's local memory and
-journal material.
+journal/session material.
 
 Allowed:
 

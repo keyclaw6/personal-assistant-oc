@@ -23,6 +23,8 @@ Save only:
 - commitments, deadlines, promises, follow-ups, waiting items
 - decisions and durable preferences
 - corrections to existing memory or rejected framings
+- belief-understanding shifts: what landed, what did not land, and open
+  questions Kristian explicitly discussed
 - important open loops
 - user-approved memory updates
 
@@ -36,12 +38,19 @@ Save only:
 
 ## Files to use
 
+- `memory/sessions/YYYY-MM-DD/messenger.summary.md` for useful session evidence.
 - `memory/observations/YYYY-MM.md` for dated observations.
 - `memory/life/commitments.md` for commitments and follow-ups.
 - `memory/conflicts.md` for contradictions or corrections.
+- `memory/beliefs/<slug>.md` for explicit/confirmed belief-understanding
+  shifts.
+- `memory/beliefs/_index.md` when belief dashboard fields change.
 - `memory/life/dream-staging/` for pattern/belief proposals requiring review.
 
 Read the target file before editing it.
+
+Use staging for speculative proposals. Write directly to belief files only for
+explicit/confirmed shifts or clear source-linked progress.
 
 ## Output
 

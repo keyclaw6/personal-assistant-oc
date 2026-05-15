@@ -13,11 +13,12 @@ Target date: yesterday in Europe/Copenhagen unless the cron prompt names a date.
 Read local files only:
 
 - `memory/life/journals/YYYY-MM-DD.md`
-- `memory/sessions/YYYY-MM-DD/clarification.md`, if present
+- `memory/sessions/YYYY-MM-DD/*.summary.md`, if present
 - `memory/life/commitments.md`
 - `memory/profile/current-context.md`
 - active files under `memory/beliefs/`
 - active files under `memory/patterns/`
+- recently touched files under `memory/belief-sources/`
 - recent files under `memory/life/reflections/`
 - `memory/conflicts.md`
 
@@ -53,6 +54,8 @@ If overwriting an existing reflection/log, copy the old file to
 
 ## Possible pattern signals
 
+## Belief understanding signals
+
 ## Suggested morning note
 
 ## Memory writes or proposals
@@ -67,6 +70,8 @@ If overwriting an existing reflection/log, copy the old file to
 - Never auto-promote a recurring pattern into durable truth.
 - Future-dated commitments and deadlines are protected.
 - Weak pattern evidence becomes a question or staging proposal, not a claim.
+- Belief updates should focus on what landed, what did not land, and what
+  remains unresolved. Do not require an experiment.
 - No clinical diagnosis, no pathologizing, no mystical language.
 
 End by replying only:

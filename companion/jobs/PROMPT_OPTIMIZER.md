@@ -16,6 +16,8 @@ approval, or memory-source-of-truth rules.
 - recent morning briefs
 - nightly reviews
 - user corrections
+- therapy/session imports and belief-source imports when evaluating belief-work
+  behavior
 - memory diffs
 - failed tool calls or bad outputs
 
@@ -24,6 +26,9 @@ approval, or memory-source-of-truth rules.
 - too verbose for Messenger
 - missed commitment
 - hallucinated pattern claim
+- auto-promoted imported belief source into Kristian truth
+- treated external model/therapist interpretation as Kristian's words
+- forced behavior experiment when understanding work was requested
 - over-therapeutic language
 - ignored correction
 - missing approval before external action

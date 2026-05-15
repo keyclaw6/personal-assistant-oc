@@ -102,6 +102,7 @@ if (!read("README.md").trim()) {
 const memoryDirs = [
   "memory/profile",
   "memory/beliefs",
+  "memory/belief-sources",
   "memory/patterns",
   "memory/observations",
   "memory/sessions",
@@ -111,7 +112,6 @@ const memoryDirs = [
   "memory/life/dream-logs",
   "memory/life/dream-staging",
   "memory/life/dream-backups",
-  "memory/sources",
 ];
 for (const dir of memoryDirs) {
   if (!existsSync(path.join(REPO, COMPANION, dir))) {
@@ -126,7 +126,8 @@ const workflowFiles = [
   "jobs/NIGHTLY_REVIEW.md",
   "jobs/SESSION_CHECKPOINT.md",
   "jobs/WEEKLY_REVIEW.md",
-  "jobs/BOOK_INGESTION.md",
+  "jobs/BELIEF_SOURCE_IMPORT.md",
+  "jobs/THERAPY_SESSION_IMPORT.md",
   "jobs/PROMPT_OPTIMIZER.md",
   "methods/BELIEF_WORK.md",
   "methods/PATTERN_WORK.md",

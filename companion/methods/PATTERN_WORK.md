@@ -60,8 +60,9 @@ One sentence.
 ## Practical impact
 What this affects in daily life.
 
-## Useful experiment/question
-One next step.
+## Useful question or possible belief
+One question, or one belief this pattern may suggest inspecting. A pattern may
+suggest a belief; it does not prove one.
 
 ## Review log
 - YYYY-MM-DD — update

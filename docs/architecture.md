@@ -1,9 +1,10 @@
 # Architecture — Companion
 
 Companion is one Messenger-first OpenClaw agent for Kristian Bilstrup. The goal
-is practical help: keep commitments visible, make daily life easier, and notice
-evidence-backed patterns without turning the assistant into a therapist or
-mythology engine.
+is practical help and understanding-first belief change: keep commitments
+visible, make daily life easier, track what Kristian is trying to understand,
+and notice evidence-backed patterns without turning the assistant into a
+therapist or mythology engine.
 
 ## Runtime shape
 
@@ -44,8 +45,9 @@ companion/memory/
   life/             commitments, journals, briefings, nightly/weekly reviews
   observations/     lightweight dated observations
   patterns/         evidence-backed recurring patterns
-  beliefs/          belief experiments
-  sources/books/    source notes and possible practices
+  beliefs/          belief understanding and integration logs
+  belief-sources/   structured imported belief candidates
+  sessions/         dated therapy/belief-chat/messenger summaries
   conflicts.md      contested or corrected memory
 ```
 
@@ -56,8 +58,10 @@ optional tag.
 ## Operating principle
 
 Live chat stays lightweight and useful. Deeper synthesis happens in scheduled
-nightly/weekly reviews. Pattern claims require dated evidence, confidence, and
-an alternative explanation. Weak evidence becomes a question.
+nightly/weekly reviews. Belief change is understanding-first: track what lands,
+what does not land, and what signs show integration. Experiments are optional
+evidence, not the core mechanism. Pattern claims require dated evidence,
+confidence, and an alternative explanation. Weak evidence becomes a question.
 
 ## Scheduled routines
 

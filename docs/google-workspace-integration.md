@@ -27,3 +27,7 @@ See `companion/TOOLS.md` for the exact tool names and approval posture.
 Google Drive, Docs, Sheets, Contacts, and Keep are not part of the active
 allowlist. Add them only after Kristian explicitly asks and the behavior is
 tested.
+
+For tasks: Google Tasks is the source of truth for actionable to-dos. Companion
+memory keeps commitments, waiting-for context, and links to task IDs; it should
+not duplicate the full task list in Markdown.

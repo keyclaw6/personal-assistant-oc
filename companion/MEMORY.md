@@ -3,6 +3,33 @@
 Files are the source of truth. Cognee indexes and retrieves; it does not decide
 what is true.
 
+## Belief-change foundation
+
+Kristian's belief-change frame is based on the Positive Drive principle from
+The Freedom Model:
+
+- People always do what currently seems best to them, given their understanding
+  of the world, their perceived options, and their expected happiness/pain.
+- "Most happiness" can include least pain, relief, safety, comfort, pleasure,
+  meaning, or whatever seems preferable in that moment.
+- Behavior follows perceived preference. If Kristian chooses pizza, chocolate,
+  avoidance, honesty, or action, some belief currently makes that option seem
+  best or most pleasurable overall.
+- Changing behavior sustainably comes from changing understanding: what seems
+  true, what seems pleasurable, what seems costly, and what seems like the best
+  option.
+- Kristian does not use willpower as the main tool for behavior change. He uses
+  willpower, when needed, to examine and update beliefs/understanding.
+- "I always do what I want" means: let current wants reveal the current belief
+  system, then use the real consequences and reflection to recalibrate what is
+  genuinely wanted in the future.
+
+Companion should therefore treat unwanted or harmful behavior as information
+about the current perceived-best option, not as moral failure or lack of
+willpower. The useful question is: what understanding made this seem best, and
+what would need to be understood differently for another option to honestly seem
+better?
+
 ## Layout
 
 ```txt
@@ -11,8 +38,9 @@ memory/
 ├── life/             commitments, journals, briefings, reviews
 ├── observations/     monthly working observations
 ├── patterns/         evidence-backed recurring patterns
-├── beliefs/          active belief experiments and logs
-├── sources/books/    book notes and possible applications
+├── beliefs/          belief understanding and integration logs
+├── belief-sources/   structured imported belief candidates
+├── sessions/         dated therapy/belief-chat/messenger summaries
 └── conflicts.md      contested or corrected memory
 ```
 
@@ -25,6 +53,9 @@ main storage ontology.
 - `profile/`: stable facts, current context, and preferences Kristian has
   confirmed.
 - `life/commitments.md`: promises, follow-ups, waiting items, and deadlines.
+  Google Tasks remains the source of truth for actionable to-dos; this file adds
+  promise/waiting-for/context/task-ID metadata and should not duplicate the full
+  task list.
 - `life/journals/YYYY-MM-DD.md`: raw evening journals. Evidence, not analysis.
 - `life/reflections/YYYY-MM-DD.md`: nightly local reviews.
 - `life/dream-logs/YYYY-MM-DD.md`: operational logs for nightly reviews.
@@ -33,8 +64,14 @@ main storage ontology.
   not yet durable patterns.
 - `patterns/<slug>.md`: recurring pattern files with evidence and
   counterevidence.
-- `beliefs/<slug>.md`: belief work tied to a concrete experiment.
-- `sources/books/<slug>.md`: book ideas, source notes, and possible practices.
+- `beliefs/<slug>.md`: understanding-first belief work and integration status.
+- `beliefs/_index.md`: belief dashboard. Update it when a belief file is
+  created, status/priority/current focus changes, or next review changes.
+- `belief-sources/<slug>.md`: structured belief candidates from books/agents or
+  other sources. Companion does not ingest raw books directly.
+- `sessions/YYYY-MM-DD/<source>.summary.md`: therapy sessions, external
+  belief-change chats, or Messenger summaries. Prefer summaries over raw
+  transcripts unless Kristian explicitly wants raw storage.
 
 ## Write rules
 
@@ -51,7 +88,8 @@ Write conservatively for interpretations:
 - pattern hypotheses require dated evidence
 - belief/shadow readings are proposals unless Kristian confirms them
 - weak signals become questions, not memory claims
-- books suggest lenses; they do not confirm facts about Kristian
+- structured sources suggest beliefs to inspect; they do not confirm facts about
+  Kristian
 
 Before changing durable memory, read the relevant file first.
 

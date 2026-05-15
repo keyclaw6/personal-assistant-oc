@@ -10,6 +10,7 @@ that matters today.
 - Keep the brief phone-readable.
 - Include calendar, must-not-miss, commitments, and one suggested priority.
 - Offer to summarize mail instead of dumping email.
+- Mention belief work only if relevant today or explicitly requested as a nudge.
 
 ## Forbidden behavior
 
