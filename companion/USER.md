@@ -4,8 +4,8 @@
 - **What to call him:** Kristian
 - **Timezone:** Europe/Copenhagen
 - **Location:** Denmark
+- **Primary channel:** Facebook Messenger
 
-Deeper content (values, current context, learning style, shadow themes,
-relationships, projects) populates through Messenger conversation over time
-and lives under `memory/profile/` and the rest of `memory/`. This file stays
-sparse on purpose.
+Keep this file to stable facts Kristian has confirmed. Current projects,
+preferences, relationships, patterns, and journal-derived context live under
+`memory/` with source and confidence.

@@ -1,83 +1,74 @@
 # Architecture — Companion
 
-> Single personal agent for Kristian Bilstrup. One agent, one runtime workspace,
-> three intertwined responsibilities: life ops, belief change, shadow /
-> self-knowledge. Read `companion/PHILOSOPHY.md` before this doc.
+Companion is one Messenger-first OpenClaw agent for Kristian Bilstrup. The goal
+is practical help: keep commitments visible, make daily life easier, and notice
+evidence-backed patterns without turning the assistant into a therapist or
+mythology engine.
 
-## Shape
+## Runtime shape
 
+```txt
+Facebook Messenger ─▶ OpenClaw gateway ─▶ Companion workspace
+                                      │
+                                      ├─ openclaw-messenger plugin
+                                      ├─ cognee-openclaw indexes companion/memory/
+                                      ├─ composio-limited tools for Gmail/Calendar/Tasks/LinkedIn
+                                      └─ scheduled jobs: morning brief, evening journal, nightly review
 ```
-Facebook Messenger  ──▶  OpenClaw gateway  ──▶  Companion (single agent)
-                                │
-                                ├─ cognee-openclaw plugin  ── reads/indexes ─▶  companion/memory/ + companion/MEMORY.md
-                                │                            (LanceDB + Kuzu + SQLite under .cognee_system/)
-                                │
-                                ├─ openclaw-messenger plugin  ── primary channel
-                                ├─ gog skill                  ── Google Workspace
-                                └─ scripts/morning-brief.mjs  ── 07:30 Europe/Copenhagen cron
+
+## Active prompt layers
+
+Use OpenClaw's native workspace files only:
+
+```txt
+companion/
+  SOUL.md      # voice/tone/boundaries
+  AGENTS.md    # operating contract
+  USER.md      # stable user facts
+  IDENTITY.md  # short presentation
+  TOOLS.md     # tool conventions and approval policy
+  MEMORY.md    # memory contract
+  HEARTBEAT.md # tiny heartbeat checklist
+  jobs/        # explicit scheduled-job prompts
+  methods/     # belief/pattern methods
 ```
 
-- **One runtime workspace:** `/home/kab/personal-assistant-oc/companion`. No
-  second agent. No belief sub-workspace; belief content lives under
-  `memory/beliefs/` inside that runtime workspace and is read by the same
-  agent.
-- **Files are source of truth.** Everything durable is Markdown under
-  `companion/memory/`. The Cognee plugin sits on top to index and inject
-  retrieval context; if it disappeared tomorrow, no durable knowledge would be
-  lost.
-- **OpenRouter** is the LLM provider (single API key). DeepSeek high-reasoning
-  for chat. OpenRouter embeddings primary, Ollama `nomic-embed-text`
-  fallback.
-- **Messenger** is the only user-facing channel. OpenClaw dashboard / CLI
-  are maintenance only.
+`companion/archive/design/PHILOSOPHY.old.md` is archived rationale, not runtime
+instruction.
 
 ## Memory directory
 
-```
+```txt
 companion/memory/
-├── profile/        values, current-context, learning-style, shadow-themes, belief-philosophy
-├── beliefs/        _index.md + <slug>.md per belief (frontmatter: stage, started, last_touched, completion)
-├── shadow/         <pattern-slug>.md (frontmatter: framing, confidence, first/last_observed)
-├── sessions/       YYYY-MM-DD/{transcript.md, clarification.md}  ← two-pass discipline
-├── life/           commitments.md + briefings/YYYY-MM-DD.md
-├── sources/        books/<slug>/{notes.md, belief-map.md}
-└── conflicts.md    single file; things currently contested
+  profile/          stable/current context and preferences
+  life/             commitments, journals, briefings, nightly/weekly reviews
+  observations/     lightweight dated observations
+  patterns/         evidence-backed recurring patterns
+  beliefs/          belief experiments
+  sources/books/    source notes and possible practices
+  conflicts.md      contested or corrected memory
 ```
 
-## Posture
+Legacy `memory/shadow/` may remain for old material, but new recurring
+self-development work goes to `memory/patterns/` with `shadow` only as an
+optional tag.
 
-Active interlocutor (see `PHILOSOPHY.md`, §"The agent's posture"). Not a
-mirror, not an oracle. Proposes interpretations as hypotheses, draws
-cross-session parallels unprompted, offers multiple reframings, names what's
-avoided, designs experiments, flags contradictions, disagrees gently.
-Confidence is stated. Corrections are remembered.
+## Operating principle
 
-Kristian owns belief-completion marks. The agent may recommend
-`ready_for_user_decision`; it cannot complete.
+Live chat stays lightweight and useful. Deeper synthesis happens in scheduled
+nightly/weekly reviews. Pattern claims require dated evidence, confidence, and
+an alternative explanation. Weak evidence becomes a question.
 
-## Two-pass session discipline
+## Scheduled routines
 
-Live Messenger conversation is interpretive and warm. After the session ends
-(5+ minute pause), two files land under `companion/memory/sessions/YYYY-MM-DD/`:
+- Morning brief — 07:30 Europe/Copenhagen.
+- Evening journal reminder — 21:00 Europe/Copenhagen if today's journal is
+  missing.
+- Nightly review — local-only consolidation while Kristian sleeps.
 
-1. `transcript.md` — raw, unedited.
-2. `clarification.md` — deterministic, fact-only summary.
+## External tools
 
-Later pattern analysis reads only clarifications. Never live impressions.
-
-## Morning brief
-
-Daily 07:30 Europe/Copenhagen via Messenger. Falls back to Android
-`system.notify` on Kristian's S22; final fallback writes
-`companion/memory/life/briefings/YYYY-MM-DD.md` and surfaces in the next
-heartbeat.
-
-Sections: schedule, priorities, commitments, beliefs in progress, captured
-yesterday, mail headline.
-
-## Archived material
-
-`archive/memory-old/`, `archive/memory-wiki-old/`, `archive/belief-system-old/`,
-`archive/templates-old/` hold the previous structure for reference. They are
-**not** indexed by the Cognee plugin and **not** loaded by the agent. Content
-is migrated forward only when Kristian explicitly names it.
+Composio is the active Google/LinkedIn path. Reading/summarizing/drafting is
+allowed when useful. Sending, deleting, posting, editing calendar events,
+marking tasks complete, or changing integrations requires explicit approval for
+that exact action.

@@ -7,9 +7,8 @@
  * 2. No .env files committed (except .env.template).
  * 3. No node_modules/ or dist/ committed under plugins/.
  * 4. .cognee_system/ and .cognee_data/ are gitignored.
- * 5. Companion runtime identity files are non-empty.
+ * 5. Companion runtime prompt files are non-empty.
  * 6. companion/memory/ tree exists with expected subdirectories.
- * 7. companion/memory/profile/belief-philosophy.md contains the Perceived Best Option Principle.
  */
 
 import { execFileSync } from "node:child_process";
@@ -87,7 +86,7 @@ const identityFiles = [
   "TOOLS.md",
   "MEMORY.md",
   "HEARTBEAT.md",
-  "PHILOSOPHY.md",
+  "DREAM.md",
 ];
 for (const f of identityFiles) {
   const content = read(companionPath(f));
@@ -99,17 +98,19 @@ for (const f of identityFiles) {
 if (!read("README.md").trim()) {
   errors.push("README.md: repo overview is empty");
 }
-if (existsSync(path.join(REPO, "AGENTS.md"))) {
-  errors.push("AGENTS.md: root AGENTS.md should not exist; runtime rules live in companion/AGENTS.md");
-}
-
 // 5. memory/ tree exists
 const memoryDirs = [
   "memory/profile",
   "memory/beliefs",
-  "memory/shadow",
+  "memory/patterns",
+  "memory/observations",
   "memory/sessions",
   "memory/life",
+  "memory/life/journals",
+  "memory/life/reflections",
+  "memory/life/dream-logs",
+  "memory/life/dream-staging",
+  "memory/life/dream-backups",
   "memory/sources",
 ];
 for (const dir of memoryDirs) {
@@ -118,10 +119,22 @@ for (const dir of memoryDirs) {
   }
 }
 
-// 6. belief-philosophy.md contains the Perceived Best Option Principle
-const bp = read(companionPath("memory/profile/belief-philosophy.md"));
-if (!bp.includes("Perceived Best Option")) {
-  errors.push("companion/memory/profile/belief-philosophy.md: missing Perceived Best Option Principle");
+// 6. Required job/method prompts exist
+const workflowFiles = [
+  "jobs/MORNING_BRIEF.md",
+  "jobs/EVENING_JOURNAL_REMINDER.md",
+  "jobs/NIGHTLY_REVIEW.md",
+  "jobs/WEEKLY_REVIEW.md",
+  "jobs/BOOK_INGESTION.md",
+  "jobs/PROMPT_OPTIMIZER.md",
+  "methods/BELIEF_WORK.md",
+  "methods/PATTERN_WORK.md",
+];
+for (const f of workflowFiles) {
+  const content = read(companionPath(f));
+  if (!content.trim()) {
+    errors.push(`${companionPath(f)}: workflow file is empty or missing`);
+  }
 }
 
 // 7. conflicts.md exists

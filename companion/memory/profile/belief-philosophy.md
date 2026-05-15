@@ -26,18 +26,18 @@ Belief change happens in life, not in conversation. Avoid
 over-intellectualizing. Ask for concrete examples, recent moments, embodied
 predictions, lived experiments.
 
-## Lifecycle
+## Statuses
 
+```txt
+noticed → working → testing → settled → archived
 ```
-candidate → active → testing → integrated → maintenance → archived
-```
 
-Completion types (Kristian owns the final mark):
+- `noticed` — possible belief, not yet chosen as work.
+- `working` — Kristian wants to examine or update it.
+- `testing` — there is a real-world experiment underway.
+- `settled` — the useful update has become normal enough for now.
+- `archived` — no longer current, or not useful to work on.
 
-- `complete_integrated` — updated belief is the normal operating model.
-- `complete_dissolved` — original belief no longer feels coherent.
-- `complete_contextualized` — useful only in narrower contexts.
-- `complete_rejected` — not actually Kristian's, or not worth working on.
-- `complete_archived` — no longer current priority; may be revisited.
-
-The agent may recommend `ready_for_user_decision`. Only Kristian completes.
+Only Kristian decides whether a belief is worth working on or settled. The
+assistant may suggest an experiment or ask for a decision, but it should not
+turn a clever interpretation into a belief file.

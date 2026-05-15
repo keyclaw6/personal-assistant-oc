@@ -6,36 +6,35 @@ Schedule: every day at 07:30 Europe/Copenhagen.
 
 Goal: give Kristian a short private phone-readable start-of-day brief.
 
-Delivery: Messenger (primary). Fallback: Android `system.notify` to Kristian's S22. Final fallback: write to `companion/memory/life/briefings/YYYY-MM-DD.md` and surface on next heartbeat.
+Delivery: Messenger (primary). File fallback writes to
+`companion/memory/life/briefings/YYYY-MM-DD.md`. Android notification fallback
+is future/optional unless explicitly wired.
 
 Required checks:
 
-1. Calendar events today via `gog`.
-2. Tasks/reminders due today, overdue, or stale via `gog tasks`.
+1. Calendar events today via Composio Calendar.
+2. Tasks/reminders due today, overdue, or stale via Composio Google Tasks.
 3. Commitments due today, overdue, or waiting for reply (`companion/memory/life/commitments.md`).
-4. New or unanswered Gmail messages via `gog --gmail-no-send`.
-5. Active/testing beliefs with day count and last-touched (`companion/memory/beliefs/_index.md`).
-6. Captured yesterday — auto-promoted items from `companion/memory/sessions/YYYY-MM-DD/clarification.md`.
+4. New or unanswered Gmail messages via Composio Gmail tools.
+5. Active beliefs or patterns only when relevant today.
+6. Yesterday's journal/nightly review if it produced a useful morning note.
 
-Output shape:
+Output shape follows `companion/jobs/MORNING_BRIEF.md`:
 
-```md
-# Morning Brief — YYYY-MM-DD
+```txt
+Morning, Kristian.
 
-## Schedule
-- ...
+Today:
+- Calendar:
+- Must-not-miss:
+- Commitments:
+- Suggested priority:
 
-## Commitments
-- ...
+Watch:
+- One evidence-backed risk/pattern, only if useful.
 
-## Beliefs in Progress
-- ...
-
-## Mail
-- ...
-
-## Captured Yesterday
-- ...
+Optional:
+- Want me to summarize mail?
 ```
 
 If a source is unavailable, include a one-line note and continue with the remaining sources.
@@ -50,9 +49,10 @@ Morning brief should show:
 - due today
 - waiting items older than their review date
 
-## Gmail Event Handling
+## Gmail Event Handling (future/optional)
 
-When Gmail webhooks are enabled, the event handler should:
+No Gmail webhook handler is part of the active runtime yet. If enabled later, it
+should:
 
 1. Record the event source and message/thread id.
 2. Classify urgency and likely required action.
@@ -60,12 +60,62 @@ When Gmail webhooks are enabled, the event handler should:
 4. Avoid replying automatically.
 5. Surface only actionable items in the next brief unless urgency rules say to alert earlier.
 
-## Auto-Capture
+## Session Capture (explicit workflow only)
 
-After each meaningful Messenger conversation (5+ minute pause defines end):
+When a capture workflow is explicitly run after a meaningful Messenger
+conversation:
 
 1. Write `companion/memory/sessions/YYYY-MM-DD/transcript.md` — raw conversation.
 2. Write `companion/memory/sessions/YYYY-MM-DD/clarification.md` — deterministic fact-only summary.
-3. Next morning brief includes a "captured yesterday" section.
+3. Next morning brief may include the concrete captures.
 
-Messenger message `forget: <fact>` deletes or edits the relevant file; Cognee re-syncs.
+Messenger message `forget: <fact>` asks Companion to delete or edit the relevant
+file when the target is clear; Cognee re-syncs.
+
+## Evening Journal
+
+Schedule: every day at 21:00 Europe/Copenhagen.
+
+Goal: if no journal exists for today, send Kristian a short Messenger reminder
+asking whether he wants to journal.
+
+Journal file:
+
+```txt
+companion/memory/life/journals/YYYY-MM-DD.md
+```
+
+Prompt shape:
+
+1. What actually happened today?
+2. What mattered, emotionally or practically?
+3. What did you avoid, postpone, or keep circling?
+4. Any commitments, replies, promises, or decisions?
+5. What does tomorrow need from you?
+6. Anything from today that should not be remembered?
+
+If Kristian says `skip journal`, write a skipped marker for the date and do not
+nag again that evening.
+
+## Nightly Review
+
+Schedule: nightly while Kristian sleeps.
+
+Goal: make life easier tomorrow by reviewing yesterday's local memory and
+journal material.
+
+Allowed:
+
+- read local memory files
+- write `companion/memory/life/reflections/YYYY-MM-DD.md`
+- write `companion/memory/life/dream-logs/YYYY-MM-DD.md`
+- write review proposals under `companion/memory/life/dream-staging/`
+
+Not allowed in this job:
+
+- sensor sweeps
+- ambient actions
+- external service changes
+- emergency surfacing
+- inner monologue artifacts
+- auto-promoting belief/pattern conclusions into truth

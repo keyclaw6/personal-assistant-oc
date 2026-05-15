@@ -57,6 +57,15 @@
     },
     "tools": {
         "profile": "default",
+        "alsoAllow": [
+            "composio-limited",
+            "composio_status",
+            "composio_gmail_personal",
+            "composio_gmail_work",
+            "composio_calendar",
+            "composio_tasks",
+            "composio_linkedin"
+        ],
         "web": {
             "search": {
                 "provider": "tavily",
@@ -69,6 +78,9 @@
             "openrouter",
             "tavily",
             "cognee-openclaw",
+            "memory-core",
+            "messenger",
+            "composio-limited",
             "device-pair",
             "phone-control",
             "talk-voice"
@@ -93,6 +105,18 @@
             },
             "bonjour": {
                 "enabled": false
+            },
+            "messenger": {
+                "enabled": true,
+                "config": {
+                    "webhookPath": "/messenger/webhook",
+                    "pageAccessToken": "<MESSENGER_PAGE_ACCESS_TOKEN>",
+                    "appSecret": "<MESSENGER_APP_SECRET>",
+                    "verifyToken": "<MESSENGER_VERIFY_TOKEN>"
+                }
+            },
+            "composio-limited": {
+                "enabled": true
             },
             "browser": {
                 "enabled": false

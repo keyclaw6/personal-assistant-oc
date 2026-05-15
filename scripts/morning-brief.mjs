@@ -6,12 +6,11 @@
  *   node scripts/morning-brief.mjs           # compile + send via Messenger
  *   node scripts/morning-brief.mjs --dry-run  # compile only, print to stdout
  *
- * Requires: gog (Google Workspace CLI), Messenger plugin configured.
- * Falls back to file-only if Messenger send fails.
+ * File-local fallback compiler. The scheduled morning brief agent should use
+ * jobs/MORNING_BRIEF.md and Composio tools for live Calendar/Gmail/Tasks data.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
@@ -27,14 +26,6 @@ function read(file) {
   return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
 
-function run(cmd) {
-  try {
-    return execSync(cmd, { encoding: "utf8", timeout: 15000 }).trim();
-  } catch {
-    return "";
-  }
-}
-
 // ── gather data ──────────────────────────────────────────────────────────────
 
 // 1. Commitments
@@ -44,31 +35,17 @@ const commitmentLines = commitmentsRaw
   .filter((l) => l.startsWith("|") && !l.match(/^\|[\s-]+\|/))
   .slice(1); // skip header
 
-// 2. Calendar (via gog)
-let calendarEvents = "";
-try {
-  calendarEvents = run(
-    `gog calendar events list --json --no-input --max-results 10 --time-min "${today}T00:00:00" --time-max "${today}T23:59:59" 2>/dev/null`,
-  );
-} catch {}
+// 2. Current context / priorities
+const currentContext = read("memory/profile/current-context.md");
 
-// 3. Gmail (via gog)
-let gmailCount = "";
-try {
-  const gmailJson = run(
-    `gog gmail messages list --json --no-input --max-results 5 --query "is:unread" 2>/dev/null`,
-  );
-  if (gmailJson) {
-    const parsed = JSON.parse(gmailJson);
-    gmailCount = String(parsed.messages?.length ?? 0);
-  }
-} catch {}
+// 3. Recent nightly review
+const yesterdayReview = read(`memory/life/reflections/${yesterday}.md`);
 
-// 4. Beliefs
+// 4. Beliefs / patterns
 const beliefsIndex = read("memory/beliefs/_index.md");
 const activeBeliefs = beliefsIndex
   .split("\n")
-  .filter((l) => l.includes("active") || l.includes("testing"));
+  .filter((l) => l.includes("working") || l.includes("testing") || l.includes("active"));
 
 // 5. Captured yesterday
 const yesterdayClarification = read(
@@ -77,66 +54,49 @@ const yesterdayClarification = read(
 
 // ── compose brief ────────────────────────────────────────────────────────────
 
-let brief = `# Morning Brief — ${today}\n\n`;
+const contextLines = currentContext
+  .split("\n")
+  .filter((l) => l.trim() && !l.startsWith("#"))
+  .filter((l) => !/empty by design|populated through conversation/i.test(l));
+const priority = contextLines.slice(0, 2).join(" ") || "No explicit current priority recorded yet.";
 
-// Calendar
-brief += `## Schedule\n\n`;
-if (calendarEvents) {
-  try {
-    const events = JSON.parse(calendarEvents);
-    const items = events.items || events;
-    if (Array.isArray(items) && items.length > 0) {
-      for (const ev of items.slice(0, 5)) {
-        const time = ev.start?.dateTime || ev.start?.date || "?";
-        const summary = ev.summary || "(no title)";
-        brief += `- ${time}: ${summary}\n`;
-      }
-    } else {
-      brief += `- No events today\n`;
-    }
-  } catch {
-    brief += `- (gog returned unparseable data)\n`;
-  }
-} else {
-  brief += `- (gog not available — authenticate with \`gog auth login\`)\n`;
-}
+let brief = `# Morning Brief — ${today}\n\n`;
+brief += `Morning, Kristian.\n\n`;
+brief += `## Today\n\n`;
+brief += `- Calendar: live calendar is gathered by the scheduled agent via Composio Calendar. This script is file-local fallback only.\n`;
+brief += `- Must-not-miss: no file-local must-not-miss item recorded.\n`;
 
 // Commitments
-brief += `\n## Commitments\n\n`;
 if (commitmentLines.length > 0) {
+  brief += `- Commitments:\n`;
   for (const line of commitmentLines.slice(0, 5)) {
-    brief += `${line}\n`;
+    brief += `  ${line}\n`;
   }
 } else {
-  brief += `- No tracked commitments\n`;
+  brief += `- Commitments: no tracked commitments.\n`;
 }
+brief += `- Suggested priority: ${priority}\n`;
 
-// Beliefs
-brief += `\n## Beliefs in Progress\n\n`;
+const watchLines = [];
 if (activeBeliefs.length > 0) {
-  for (const line of activeBeliefs.slice(0, 5)) {
-    brief += `${line}\n`;
-  }
-} else {
-  brief += `- No active beliefs\n`;
+  watchLines.push(...activeBeliefs.slice(0, 2));
 }
-
-// Mail headline
-brief += `\n## Mail\n\n`;
-if (gmailCount) {
-  brief += `- ${gmailCount} unread message(s)\n`;
-} else {
-  brief += `- (gog not available)\n`;
+if (yesterdayReview.trim()) {
+  const lines = yesterdayReview.split("\n").filter((l) => l.trim() && !l.startsWith("#"));
+  watchLines.push(...lines.slice(0, 2));
 }
-
-// Captured yesterday
 if (yesterdayClarification.trim()) {
-  brief += `\n## Captured Yesterday\n\n`;
   const lines = yesterdayClarification.split("\n").filter((l) => l.trim());
-  for (const line of lines.slice(0, 5)) {
-    brief += `${line}\n`;
-  }
+  watchLines.push(...lines.slice(0, 2));
 }
+
+if (watchLines.length > 0) {
+  brief += `\n## Watch\n\n`;
+  for (const line of watchLines.slice(0, 3)) brief += `- ${line}\n`;
+}
+
+brief += `\n## Optional\n\n`;
+brief += `- Want me to summarize mail? Live mail headline is gathered by the scheduled agent via Composio Gmail.\n`;
 
 // ── output ───────────────────────────────────────────────────────────────────
 

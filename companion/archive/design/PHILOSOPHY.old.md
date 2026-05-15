@@ -1,4 +1,10 @@
-# PHILOSOPHY.md — What This Agent Is For
+# PHILOSOPHY.old.md — archived design note
+
+This file is archived design rationale. It is not part of the active OpenClaw
+runtime prompt stack. Active behavior lives in `SOUL.md`, `AGENTS.md`,
+`MEMORY.md`, `TOOLS.md`, `jobs/`, and `methods/`.
+
+# PHILOSOPHY.md — What This Agent Was For
 
 > This file is the root statement of intent for the Companion agent. If you are
 > an agent (or a human) coming back to this project to edit, extend, or rebuild

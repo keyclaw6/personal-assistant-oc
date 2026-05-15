@@ -4,9 +4,10 @@ Private repository for **Companion**, Kristian Bilstrup's personal OpenClaw
 agent. The runtime workspace lives in `companion/`; repo-root files are
 maintenance code, docs, plugins, and setup.
 
-**Read [`companion/PHILOSOPHY.md`](./companion/PHILOSOPHY.md) first.** It is
-the stable center of this project. Every architectural decision below traces
-back to it.
+The active runtime contract is the standard OpenClaw workspace in
+`companion/`: `SOUL.md`, `AGENTS.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`,
+`MEMORY.md`, plus explicit prompts under `companion/jobs/` and
+`companion/methods/`.
 
 ## What this is
 
@@ -19,8 +20,8 @@ back to it.
   (Kuzu) + vector store (LanceDB) and injecting retrieval results before
   each agent run.
 - LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
-- Active-interlocutor posture: not a mirror, not an oracle. See
-  `companion/PHILOSOPHY.md` and `companion/SOUL.md`.
+- Evidence-first self-development: patterns and belief work require dated
+  evidence, confidence, and practical next steps.
 
 ## What this is not
 
@@ -34,11 +35,12 @@ back to it.
 | Path | What |
 | --- | --- |
 | `companion/` | Actual OpenClaw runtime workspace. |
-| `companion/PHILOSOPHY.md` | Root statement of intent. Read first. |
 | `companion/IDENTITY.md`, `companion/SOUL.md`, `companion/USER.md`, `companion/AGENTS.md`, `companion/TOOLS.md`, `companion/MEMORY.md`, `companion/HEARTBEAT.md` | Runtime bootstrap files loaded by OpenClaw. |
-| `IMPLEMENTATION_PLAN.md` | The pivot plan. |
+| `companion/jobs/`, `companion/methods/` | Explicit job and self-development workflows. |
+| `companion/archive/design/PHILOSOPHY.old.md` | Archived design rationale, not runtime instruction. |
+| `IMPLEMENTATION_PLAN.md` | Historical pivot plan. |
 | `companion/memory/` | All durable knowledge (files are source of truth). |
-| `companion/skills/` | Workspace skills: `gog`, `google_workspace_assistant`. |
+| `plugins/openclaw-composio-limited/` | Allowlisted Composio tools for Gmail, Calendar, Tasks, and LinkedIn. |
 | `plugins/openclaw-messenger/` | Facebook Messenger channel plugin. |
 | `scripts/` | Local maintenance (`gws.mjs`, `morning-brief.mjs`, `repo-check.mjs`). |
 | `docs/` | Architecture, Cognee setup, OpenClaw setup, security, integrations. |
@@ -53,9 +55,9 @@ back to it.
 
 ## Daily rhythm
 
-A morning brief at 07:30 Europe/Copenhagen lands in Messenger: schedule,
-priorities, commitments, beliefs in progress, captured-yesterday
-acknowledgments, mail headline.
+- 07:30 — morning brief.
+- 21:00 — evening journal reminder if today's journal is missing.
+- Night — local-only nightly review.
 
 ## Quick start
 

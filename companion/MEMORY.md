@@ -1,59 +1,84 @@
-# MEMORY.md — How memory works
+# MEMORY.md — Memory contract
 
-Files are the source of truth. The Cognee plugin sits on top.
+Files are the source of truth. Cognee indexes and retrieves; it does not decide
+what is true.
 
-## Source of truth
+## Layout
 
-Everything durable about Kristian lives as plain Markdown under `memory/`:
-
-```
+```txt
 memory/
-├── profile/        values, current context, learning style, shadow themes, belief philosophy
-├── beliefs/        one file per belief (slug); _index.md is the human table
-├── shadow/         named patterns; interpretive notes (hypotheses)
-├── sessions/       YYYY-MM-DD/transcript.md + clarification.md (two-pass discipline)
-├── life/           commitments.md + briefings/YYYY-MM-DD.md
-├── sources/        books/<slug>/notes.md + belief-map.md
-└── conflicts.md    one file; things currently contested
+├── profile/          stable/current user context and preferences
+├── life/             commitments, journals, briefings, reviews
+├── observations/     monthly working observations
+├── patterns/         evidence-backed recurring patterns
+├── beliefs/          active belief experiments and logs
+├── sources/books/    book notes and possible applications
+└── conflicts.md      contested or corrected memory
 ```
 
-Plain Markdown, hand-editable, committable to git, portable. If the Cognee
-plugin is removed tomorrow, every durable thing survives.
+Legacy `memory/shadow/` may exist for old files. New recurring self-development
+work goes under `memory/patterns/`; use `shadow` as an optional tag, not as the
+main storage ontology.
 
-## Retrieval
+## What belongs where
 
-The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id `cognee-openclaw`)
-indexes `memory/` and `MEMORY.md` into a knowledge graph (Kuzu) + vector
-store (LanceDB) and injects relevant graph-search results into the agent's
-context before each run. The agent does **not** call Cognee directly — it
-reads files when it needs to and trusts the plugin's pre-run context.
+- `profile/`: stable facts, current context, and preferences Kristian has
+  confirmed.
+- `life/commitments.md`: promises, follow-ups, waiting items, and deadlines.
+- `life/journals/YYYY-MM-DD.md`: raw evening journals. Evidence, not analysis.
+- `life/reflections/YYYY-MM-DD.md`: nightly local reviews.
+- `life/dream-logs/YYYY-MM-DD.md`: operational logs for nightly reviews.
+- `life/dream-staging/`: review proposals that need Kristian approval.
+- `observations/YYYY-MM.md`: lightweight dated observations that are useful but
+  not yet durable patterns.
+- `patterns/<slug>.md`: recurring pattern files with evidence and
+  counterevidence.
+- `beliefs/<slug>.md`: belief work tied to a concrete experiment.
+- `sources/books/<slug>.md`: book ideas, source notes, and possible practices.
 
-## Writing
+## Write rules
 
-- **Capture by writing a file.** No promotion ceremony.
-- **Aggressive auto-capture.** After each meaningful Messenger conversation,
-  write `memory/sessions/YYYY-MM-DD/transcript.md` and `clarification.md`.
-- **Acknowledgment loop.** Morning brief lists "captured yesterday" so
-  Kristian can correct.
-- **Conflicts.** When new information contradicts existing memory, append a
-  one-liner to `memory/conflicts.md` with pointers. Don't silently overwrite.
-- **Forget shortcut.** Kristian can message `forget: <fact>` or edit/delete
-  the file. The Cognee plugin re-syncs automatically.
+Write aggressively only for concrete facts:
 
-## Two-pass session discipline
+- explicit Kristian statements
+- commitments and decisions
+- stable preferences
+- corrections
+- user-approved memory updates
 
-- `transcript.md` — raw conversation, unedited.
-- `clarification.md` — deterministic fact-only summary drawn only from the
-  transcript. No coaching flourish, no speculative pattern claims.
+Write conservatively for interpretations:
 
-Later pattern analysis reads only clarifications, never live impressions.
-This separation prevents the model from drifting its own narratives into
-"patterns."
+- pattern hypotheses require dated evidence
+- belief/shadow readings are proposals unless Kristian confirms them
+- weak signals become questions, not memory claims
+- books suggest lenses; they do not confirm facts about Kristian
+
+Before changing durable memory, read the relevant file first.
+
+## Confidence and provenance
+
+For extracted observations, include source/date/confidence when useful:
+
+```md
+<!-- type=commitment source=journal date=YYYY-MM-DD confidence=0.90 status=proposed -->
+```
+
+Confidence guide:
+
+- `0.90+`: explicit statement or concrete commitment
+- `0.70–0.89`: strong repeated evidence
+- `0.40–0.69`: plausible hypothesis, needs checking
+- below `0.40`: do not promote; ask a question instead
+
+## Corrections, conflicts, forgetting
+
+- Corrections override older memory.
+- If two claims conflict, append a short note to `memory/conflicts.md` with
+  pointers to both sources.
+- `forget: <fact>` means remove/update the relevant memory when clear; ask one
+  clarifying question if the target is ambiguous.
 
 ## Privacy
 
-`<private>…</private>` blocks are stripped from any compiled artifact. Never
-quote them into shared output.
-
-Secrets, tokens, OAuth credentials, and `.cognee_system/` runtime data are
-gitignored. `memory/` is committed to a private repo.
+Never quote `<private>...</private>` blocks into compiled/shared artifacts.
+Secrets, tokens, OAuth credentials, and runtime state stay out of git.

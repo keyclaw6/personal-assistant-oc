@@ -1,5 +1,10 @@
 # Implementation Plan — Companion (Personal Agent Pivot)
 
+> Historical plan. This document is no longer the active runtime source of
+> truth. Current behavior lives in `companion/AGENTS.md`, `companion/SOUL.md`,
+> `companion/MEMORY.md`, `companion/TOOLS.md`, `companion/jobs/`, and
+> `companion/methods/`.
+
 > Status: APPROVED, PARTIALLY EXECUTED (planning + Messenger plugin commit done).
 > Owner: Kristian Bilstrup.
 > Execution agent: a fresh OpenClaw / Claude Code session, in build mode.

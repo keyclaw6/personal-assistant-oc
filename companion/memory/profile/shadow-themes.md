@@ -1,7 +1,7 @@
-# Shadow Themes
+# Pattern Themes
 
-High-level themes the agent has observed across sessions — disowned
-material, recurring patterns, contradictions, growth arcs. Hypotheses, not
-diagnosis. Detailed per-pattern files live in `memory/shadow/<slug>.md`.
+Legacy index for older shadow-language notes. New recurring pattern work lives
+in `memory/patterns/<slug>.md`; `shadow` is an optional tag/lens, not a separate
+ontology.
 
-Empty by design — populated as patterns accumulate.
+Empty by design — populated only when evidence accumulates.

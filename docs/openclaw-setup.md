@@ -41,25 +41,23 @@ openclaw cognee index     # force re-sync
 npm run check             # repo hygiene
 ```
 
-## Google Workspace Skill
+## Composio integrations
 
-The primary Google Workspace integration is the ClawHub/OpenClaw `gog` skill
-installed in `companion/skills/gog/`.
+The active Google/LinkedIn integration path is the local
+`composio-limited` OpenClaw plugin.
 
-Verify the skill and binary:
-
-```bash
-gog --version
-openclaw skills info gog
-```
-
-Set up OAuth credentials outside this repository:
+Allowed tools:
 
 ```bash
-gog auth credentials set /path/outside/repo/client_secret.json
-gog auth add you@gmail.com --services gmail,calendar,drive,contacts,tasks,people,docs,sheets --readonly
-gog auth list --json --no-input
+composio_status
+composio_gmail_personal
+composio_gmail_work
+composio_calendar
+composio_tasks
+composio_linkedin
 ```
+
+GOG is not part of the active runtime.
 
 ## Proactive Cron Jobs
 
@@ -70,3 +68,5 @@ openclaw cron list --json
 Expected:
 
 - `morning-brief`: daily at 07:30 Europe/Copenhagen.
+- `evening-journal-reminder`: daily at 21:00 Europe/Copenhagen.
+- `nightly-review` / `nightly-dream-cycle`: nightly local review while Kristian sleeps.
