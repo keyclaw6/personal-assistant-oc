@@ -1,7 +1,7 @@
 # Google and LinkedIn Integration
 
 The active integration path is the local `composio-limited` OpenClaw plugin.
-GOG is legacy and not part of the active Companion runtime.
+GOG is legacy and not part of the active Albert runtime.
 
 ## Available tool families
 
@@ -11,7 +11,7 @@ GOG is legacy and not part of the active Companion runtime.
 - Google Tasks
 - LinkedIn
 
-See `companion/TOOLS.md` for the exact tool names and approval posture.
+See `albert/TOOLS.md` for the exact tool names and approval posture.
 
 ## Safety contract
 
@@ -28,6 +28,6 @@ Google Drive, Docs, Sheets, Contacts, and Keep are not part of the active
 allowlist. Add them only after Kristian explicitly asks and the behavior is
 tested.
 
-For tasks: Google Tasks is the source of truth for actionable to-dos. Companion
+For tasks: Google Tasks is the source of truth for actionable to-dos. Albert
 memory keeps commitments, waiting-for context, and links to task IDs; it should
 not duplicate the full task list in Markdown.

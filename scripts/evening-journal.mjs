@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * evening-journal.mjs — Check whether today's evening journal exists and,
- * optionally, ask Companion to send Kristian the reminder prompt.
+ * optionally, ask Albert to send Kristian the reminder prompt.
  *
  * Usage:
  *   node scripts/evening-journal.mjs --status [--json]
@@ -16,21 +16,23 @@ import path from "node:path";
 const REPO = process.env.PERSONAL_ASSISTANT_REPO
   ? path.resolve(process.env.PERSONAL_ASSISTANT_REPO)
   : path.resolve(import.meta.dirname, "..");
-const WORKSPACE = process.env.COMPANION_WORKSPACE
+const WORKSPACE = process.env.ALBERT_WORKSPACE
+  ? path.resolve(process.env.ALBERT_WORKSPACE)
+  : process.env.COMPANION_WORKSPACE
   ? path.resolve(process.env.COMPANION_WORKSPACE)
-  : path.join(REPO, "companion");
+  : path.join(REPO, "albert");
 const TZ = "Europe/Copenhagen";
 
 const args = new Set(process.argv.slice(2));
 const json = args.has("--json");
 const dryRun = args.has("--dry-run");
 const explicitDate = valueAfter("--date");
-const nowMs = process.env.COMPANION_TEST_NOW
-  ? new Date(process.env.COMPANION_TEST_NOW).getTime()
+const nowMs = (process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW)
+  ? new Date(process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW).getTime()
   : Date.now();
 
 if (Number.isNaN(nowMs)) {
-  throw new Error(`Invalid COMPANION_TEST_NOW: ${process.env.COMPANION_TEST_NOW}`);
+  throw new Error(`Invalid ALBERT_TEST_NOW/COMPANION_TEST_NOW: ${process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW}`);
 }
 
 function valueAfter(flag) {

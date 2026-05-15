@@ -1,9 +1,9 @@
-# Implementation Plan — Companion (Personal Agent Pivot)
+# Implementation Plan — Albert (Personal Agent Pivot)
 
 > Historical plan. This document is no longer the active runtime source of
-> truth. Current behavior lives in `companion/AGENTS.md`, `companion/SOUL.md`,
-> `companion/MEMORY.md`, `companion/TOOLS.md`, `companion/jobs/`, and
-> `companion/methods/`.
+> truth. Current behavior lives in `albert/AGENTS.md`, `albert/SOUL.md`,
+> `albert/MEMORY.md`, `albert/TOOLS.md`, `albert/jobs/`, and
+> `albert/methods/`.
 
 > Status: APPROVED, PARTIALLY EXECUTED (planning + Messenger plugin commit done).
 > Owner: Kristian Bilstrup.
@@ -45,7 +45,7 @@ Daily Messenger morning brief at 07:30 Europe/Copenhagen with: schedule, priorit
 
 | Decision | Value |
 |---|---|
-| Agent placeholder name | Companion |
+| Agent placeholder name | Albert |
 | Channel | Facebook Messenger primary; OpenClaw dashboard/CLI for maintenance |
 | Memory model | File-first Markdown; Cognee indexes on top via the OpenClaw plugin |
 | Cognee integration | OpenClaw plugin `@cognee/cognee-openclaw` (manifest id `memory-cognee`) |
@@ -74,7 +74,7 @@ One root for memory. Semantic, not numbered. Light optional frontmatter.
 ```
 personal-assistant-oc/
 ├── PHILOSOPHY.md        # ★ root statement of intent — read first
-├── IDENTITY.md          # Companion's name, role, tone
+├── IDENTITY.md          # Albert's name, role, tone
 ├── SOUL.md              # character, posture, boundaries
 ├── USER.md              # Kristian (sparse, durable)
 ├── AGENTS.md            # operating rules for the agent
@@ -244,7 +244,7 @@ Keep (lightly edit to remove coder framing):
 
 All of these should align with `PHILOSOPHY.md`. Quote or summarize from it where useful; do not contradict it.
 
-- `IDENTITY.md` — Name: Companion (placeholder). Role: Kristian's personal agent for life ops, belief change, and shadow work. Posture: active interlocutor, not a mirror, not an oracle.
+- `IDENTITY.md` — Name: Albert (placeholder). Role: Kristian's personal agent for life ops, belief change, and shadow work. Posture: active interlocutor, not a mirror, not an oracle.
 - `SOUL.md` — Warm, practical, curious, willing to push back. Active-interlocutor posture (per PHILOSOPHY.md): proposes interpretations, draws parallels, offers reframings, designs experiments, disagrees gently. All as hypotheses Kristian can confirm or reject. Honors user-owned completion marks. Privacy-first.
 - `USER.md` — Kristian Bilstrup, Europe/Copenhagen. Deeper content populates through Messenger over time.
 - `MEMORY.md` — One-pager: file layout, Cognee plugin handles retrieval, files are source of truth.
@@ -335,11 +335,11 @@ If mismatch is present, manually edit `~/.openclaw/openclaw.json` so `plugins.en
 The plugin scans `workspaceDir/MEMORY.md` and `workspaceDir/memory/`. Confirm OpenClaw's workspace is set to this repo root:
 ```bash
 openclaw config get agents.defaults.workspace
-# Expected: /home/kab/personal-assistant-oc/companion
+# Expected: /home/kab/personal-assistant-oc/albert
 ```
 If not, set it:
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/albert"
 ```
 
 ### 3.4 Configure Cognee env (OpenRouter primary path)
@@ -610,11 +610,11 @@ If the agent only ever reflects and agrees, the AGENTS.md rules are not landing.
 - Plumbing passes but posture fails → revisit AGENTS.md and SOUL.md; the rules aren't biting. Do not declare done until both pass.
 
 ### 8.4 Phase 8 commit
-`git commit -m "End-to-end verification of Companion: memory plumbing and active-interlocutor posture"`
+`git commit -m "End-to-end verification of Albert: memory plumbing and active-interlocutor posture"`
 
 ## Out of scope (parking lot)
 
-- Rename Companion to its real name
+- Rename Albert to its real name
 - Default shadow framework (Jungian / IFS / etc.)
 - Google Keep API integration beyond Google Tasks via gog
 - Tailscale Funnel public exposure

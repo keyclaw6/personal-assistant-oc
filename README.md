@@ -1,26 +1,26 @@
-# personal-assistant-oc — Companion
+# personal-assistant-oc — Albert
 
-Private repository for **Companion**, Kristian Bilstrup's personal OpenClaw
-agent. The runtime workspace lives in `companion/`; repo-root files are
+Private repository for **Albert**, Kristian Bilstrup's personal OpenClaw
+agent. The runtime workspace lives in `albert/`; repo-root files are
 maintenance code, docs, plugins, and setup.
 
 The active runtime contract is the standard OpenClaw workspace in
-`companion/`: `SOUL.md`, `AGENTS.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`,
-`MEMORY.md`, plus explicit prompts under `companion/jobs/` and
-`companion/methods/`.
+`albert/`: `SOUL.md`, `AGENTS.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`,
+`MEMORY.md`, plus explicit prompts under `albert/jobs/` and
+`albert/methods/`.
 
 ## What this is
 
-- A single personal agent — placeholder name *Companion* — accessed through
+- A single personal agent — placeholder name *Albert* — accessed through
   Facebook Messenger. OpenClaw dashboard / CLI are maintenance-only.
-- File-first memory under `companion/memory/`. Plain Markdown, hand-editable,
+- File-first memory under `albert/memory/`. Plain Markdown, hand-editable,
   portable.
 - The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id
   `cognee-openclaw`) sits on top, indexing those files into a knowledge graph
   (Kuzu) + vector store (LanceDB) and injecting retrieval results before
   each agent run.
 - LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
-- Understanding-first belief change: Companion tracks what Kristian is trying to
+- Understanding-first belief change: Albert tracks what Kristian is trying to
   understand, what has landed, what has not landed, and what evidence supports
   integration.
 
@@ -35,12 +35,12 @@ The active runtime contract is the standard OpenClaw workspace in
 
 | Path | What |
 | --- | --- |
-| `companion/` | Actual OpenClaw runtime workspace. |
-| `companion/IDENTITY.md`, `companion/SOUL.md`, `companion/USER.md`, `companion/AGENTS.md`, `companion/TOOLS.md`, `companion/MEMORY.md`, `companion/HEARTBEAT.md` | Runtime bootstrap files loaded by OpenClaw. |
-| `companion/jobs/`, `companion/methods/` | Explicit job and self-development workflows. |
-| `companion/archive/design/PHILOSOPHY.old.md` | Archived design rationale, not runtime instruction. |
+| `albert/` | Actual OpenClaw runtime workspace. |
+| `albert/IDENTITY.md`, `albert/SOUL.md`, `albert/USER.md`, `albert/AGENTS.md`, `albert/TOOLS.md`, `albert/MEMORY.md`, `albert/HEARTBEAT.md` | Runtime bootstrap files loaded by OpenClaw. |
+| `albert/jobs/`, `albert/methods/` | Explicit job and self-development workflows. |
+| `albert/archive/design/PHILOSOPHY.old.md` | Archived design rationale, not runtime instruction. |
 | `IMPLEMENTATION_PLAN.md` | Historical pivot plan. |
-| `companion/memory/` | All durable knowledge (files are source of truth). |
+| `albert/memory/` | All durable knowledge (files are source of truth). |
 | `plugins/openclaw-composio-limited/` | Allowlisted Composio tools for Gmail, Calendar, Tasks, and LinkedIn. |
 | `plugins/openclaw-messenger/` | Facebook Messenger channel plugin. |
 | `scripts/` | Local maintenance (`gws.mjs`, `morning-brief.mjs`, `repo-check.mjs`). |
@@ -68,10 +68,10 @@ Requires Node `>=22.14.0`.
 npm run check
 ```
 
-Set the Companion runtime folder as the OpenClaw workspace:
+Set the Albert runtime folder as the OpenClaw workspace:
 
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/albert"
 ```
 
 Install the memory plugin (see `docs/cognee-setup.md` for the full path,
@@ -110,7 +110,7 @@ not recoverable.
 
 ## Security defaults
 
-- Private GitHub repo. `companion/memory/` is committed; plaintext secrets, tokens,
+- Private GitHub repo. `albert/memory/` is committed; plaintext secrets, tokens,
   OAuth credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
   Portable secrets go only in the encrypted bundle above.
 - Gateway bound to loopback unless a documented remote-access plan exists.

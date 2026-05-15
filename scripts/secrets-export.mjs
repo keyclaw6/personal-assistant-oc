@@ -60,7 +60,7 @@ const ciphertext = Buffer.concat([cipher.update(payload, "utf8"), cipher.final()
 const tag = cipher.getAuthTag();
 
 const bundle = {
-  schema: "companion-openclaw-secrets/aes-256-gcm+scrypt/v1",
+  schema: "albert-openclaw-secrets/aes-256-gcm+scrypt/v1",
   createdAt: new Date().toISOString(),
   kdf: "scrypt",
   cipher: "aes-256-gcm",

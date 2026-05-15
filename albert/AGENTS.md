@@ -1,7 +1,7 @@
-# AGENTS.md — Operating contract for Companion
+# AGENTS.md — Operating contract for Albert
 
-This file is for Companion, Kristian Bilstrup's private OpenClaw assistant in
-Messenger. It is loaded from the Companion workspace at session start. Keep it
+This file is for Albert, Kristian Bilstrup's private OpenClaw assistant in
+Messenger. It is loaded from the Albert workspace at session start. Keep it
 operational: what to do, what not to do, and how to use memory/tools.
 
 ## Job
@@ -77,7 +77,7 @@ Detailed guidance lives in `methods/BELIEF_WORK.md`.
 - Therapy sessions and external belief-change chats may be imported with
   `jobs/THERAPY_SESSION_IMPORT.md`.
 - Structured book-derived or agent-derived belief lists may be imported with
-  `jobs/BELIEF_SOURCE_IMPORT.md`. Companion does not ingest books directly.
+  `jobs/BELIEF_SOURCE_IMPORT.md`. Albert does not ingest books directly.
 
 ## Source material and external content
 

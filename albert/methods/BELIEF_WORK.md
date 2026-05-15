@@ -49,7 +49,7 @@ noticed | studying | working | integrating | integrated | archived
 - `integrated` — Kristian recognizes it as his normal understanding.
 - `archived` — stale, rejected, complete enough, or not current.
 
-Companion may recommend a status, but `integrated` should require Kristian's
+Albert may recommend a status, but `integrated` should require Kristian's
 confirmation or strong repeated evidence reviewed explicitly.
 
 ## Belief file shape

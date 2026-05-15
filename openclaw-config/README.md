@@ -1,6 +1,6 @@
 # OpenClaw Config Reference
 
-Reference OpenClaw instance configuration for Companion. This is **not** the
+Reference OpenClaw instance configuration for Albert. This is **not** the
 live config — the live config lives at `~/.openclaw/openclaw.json` and is
 managed via `openclaw config set`. This file documents the intended shape.
 
@@ -12,7 +12,7 @@ managed via `openclaw config set`. This file documents the intended shape.
 
 1. **Set workspace path**:
    ```bash
-   openclaw config set agents.defaults.workspace "/path/to/personal-assistant-oc/companion"
+   openclaw config set agents.defaults.workspace "/path/to/personal-assistant-oc/albert"
    ```
 
 2. **Regenerate auth tokens**:
@@ -38,7 +38,7 @@ managed via `openclaw config set`. This file documents the intended shape.
 
 ## Agent
 
-Single agent: **Companion**. No separate belief agent, no coder agent.
+Single agent: **Albert**. No separate belief agent, no coder agent.
 
 ## Plugins
 

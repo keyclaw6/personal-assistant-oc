@@ -1,8 +1,8 @@
-# Cognee Setup — Companion
+# Cognee Setup — Albert
 
-The Companion agent uses [Cognee](https://www.cognee.ai/) for memory
+The Albert agent uses [Cognee](https://www.cognee.ai/) for memory
 indexing and retrieval. The OpenClaw plugin `@cognee/cognee-openclaw`
-sits on top of the file-based `companion/memory/` directory, indexing files into a
+sits on top of the file-based `albert/memory/` directory, indexing files into a
 knowledge graph (Kuzu) + vector store (LanceDB) + relational DB (SQLite).
 
 Files remain the source of truth. Cognee provides retrieval only.
@@ -10,7 +10,7 @@ Files remain the source of truth. Cognee provides retrieval only.
 ## Architecture
 
 ```
-companion/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Kuzu + LanceDB + SQLite
+albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Kuzu + LanceDB + SQLite
                        ▲
                        │
             OpenClaw plugin (cognee-openclaw)
@@ -128,4 +128,4 @@ All Cognee runtime data lives under:
 - `.cognee_system/` — databases (Kuzu, LanceDB, SQLite)
 - `.cognee_data/` — raw ingested data files
 
-Both are gitignored. Regenerable from `companion/memory/` source files.
+Both are gitignored. Regenerable from `albert/memory/` source files.

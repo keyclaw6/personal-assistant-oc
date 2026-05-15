@@ -2,7 +2,7 @@
   "name": "personal-assistant-oc",
   "version": "0.1.0",
   "private": true,
-  "description": "Companion — Kristian's Messenger-first personal assistant for life ops, memory, and evidence-backed self-development.",
+  "description": "Albert — Kristian's Messenger-first personal assistant for life ops, memory, and evidence-backed self-development.",
   "type": "module",
   "scripts": {
     "gws": "node scripts/gws.mjs",

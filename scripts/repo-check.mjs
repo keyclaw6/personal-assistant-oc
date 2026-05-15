@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * repo-check.mjs — Verify repo hygiene for the Companion workspace.
+ * repo-check.mjs — Verify repo hygiene for the Albert workspace.
  *
  * Checks:
  * 1. No secrets or credentials committed.
  * 2. No .env files committed (except .env.template).
  * 3. No node_modules/ or dist/ committed under plugins/.
  * 4. .cognee_system/ and .cognee_data/ are gitignored.
- * 5. Companion runtime prompt files are non-empty.
- * 6. companion/memory/ tree exists with expected subdirectories.
+ * 5. Albert runtime prompt files are non-empty.
+ * 6. albert/memory/ tree exists with expected subdirectories.
  */
 
 import { execFileSync } from "node:child_process";
@@ -16,7 +16,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
-const COMPANION = "companion";
+const ALBERT = "albert";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,8 +33,8 @@ function read(file) {
   return existsSync(p) ? readFileSync(p, "utf8") : "";
 }
 
-function companionPath(file) {
-  return path.join(COMPANION, file);
+function albertPath(file) {
+  return path.join(ALBERT, file);
 }
 
 function isGitignored(pattern) {
@@ -77,7 +77,7 @@ if (!isGitignored(".cognee_data/")) {
   errors.push(".cognee_data/ is not gitignored");
 }
 
-// 4. Companion runtime identity files non-empty
+// 4. Albert runtime identity files non-empty
 const identityFiles = [
   "IDENTITY.md",
   "SOUL.md",
@@ -89,9 +89,9 @@ const identityFiles = [
   "DREAM.md",
 ];
 for (const f of identityFiles) {
-  const content = read(companionPath(f));
+  const content = read(albertPath(f));
   if (!content.trim()) {
-    errors.push(`${companionPath(f)}: identity file is empty`);
+    errors.push(`${albertPath(f)}: identity file is empty`);
   }
 }
 
@@ -114,8 +114,8 @@ const memoryDirs = [
   "memory/life/dream-backups",
 ];
 for (const dir of memoryDirs) {
-  if (!existsSync(path.join(REPO, COMPANION, dir))) {
-    errors.push(`${companionPath(dir)}/: expected memory subdirectory missing`);
+  if (!existsSync(path.join(REPO, ALBERT, dir))) {
+    errors.push(`${albertPath(dir)}/: expected memory subdirectory missing`);
   }
 }
 
@@ -133,15 +133,15 @@ const workflowFiles = [
   "methods/PATTERN_WORK.md",
 ];
 for (const f of workflowFiles) {
-  const content = read(companionPath(f));
+  const content = read(albertPath(f));
   if (!content.trim()) {
-    errors.push(`${companionPath(f)}: workflow file is empty or missing`);
+    errors.push(`${albertPath(f)}: workflow file is empty or missing`);
   }
 }
 
 // 7. conflicts.md exists
-if (!existsSync(path.join(REPO, COMPANION, "memory/conflicts.md"))) {
-  errors.push("companion/memory/conflicts.md: missing");
+if (!existsSync(path.join(REPO, ALBERT, "memory/conflicts.md"))) {
+  errors.push("albert/memory/conflicts.md: missing");
 }
 
 // 8. Secret patterns in tracked text files

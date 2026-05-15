@@ -13,7 +13,7 @@ const testNow = "2026-05-15T12:00:00.000Z";
 const testDate = "2026-05-15";
 
 async function makeWorkspace() {
-  const workspace = await mkdtemp(path.join(tmpdir(), "companion-journal-e2e-"));
+  const workspace = await mkdtemp(path.join(tmpdir(), "albert-journal-e2e-"));
   await mkdir(path.join(workspace, "memory/life/journals"), { recursive: true });
   return workspace;
 }
@@ -23,8 +23,8 @@ async function runJournal(args, workspace) {
     cwd: repoRoot,
     env: {
       ...process.env,
-      COMPANION_WORKSPACE: workspace,
-      COMPANION_TEST_NOW: testNow,
+      ALBERT_WORKSPACE: workspace,
+      ALBERT_TEST_NOW: testNow,
     },
   });
 }

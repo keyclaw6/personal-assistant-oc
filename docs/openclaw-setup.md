@@ -1,9 +1,9 @@
 # OpenClaw Setup
 
-## Use The Companion Folder As Workspace
+## Use The Albert Folder As Workspace
 
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/companion"
+openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/albert"
 openclaw gateway restart
 ```
 
@@ -31,7 +31,7 @@ openclaw cognee index
 
 ## Daily Memory Commands
 
-Memory is file-first. Write Markdown files under `companion/memory/` (or
+Memory is file-first. Write Markdown files under `albert/memory/` (or
 `memory/` from inside the configured OpenClaw workspace). The Cognee plugin
 indexes them automatically.
 
@@ -73,7 +73,7 @@ Expected:
 
 ## Context management
 
-The Companion config assumes GPT-5.5 has a 400K window but effectively compacts
+The Albert config assumes GPT-5.5 has a 400K window but effectively compacts
 around 260K tokens because OpenAI reserves a large output budget. The repo
 template therefore sets:
 

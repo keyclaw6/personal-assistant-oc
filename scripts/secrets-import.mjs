@@ -18,7 +18,11 @@ function readPassphrase() {
 }
 
 const bundle = JSON.parse(readFileSync(IN, "utf8"));
-if (bundle.schema !== "companion-openclaw-secrets/aes-256-gcm+scrypt/v1") {
+const supportedSchemas = new Set([
+  "albert-openclaw-secrets/aes-256-gcm+scrypt/v1",
+  "companion-openclaw-secrets/aes-256-gcm+scrypt/v1",
+]);
+if (!supportedSchemas.has(bundle.schema)) {
   throw new Error(`Unsupported secrets bundle schema: ${bundle.schema}`);
 }
 

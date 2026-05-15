@@ -1,6 +1,6 @@
-# Architecture — Companion
+# Architecture — Albert
 
-Companion is one Messenger-first OpenClaw agent for Kristian Bilstrup. The goal
+Albert is one Messenger-first OpenClaw agent for Kristian Bilstrup. The goal
 is practical help and understanding-first belief change: keep commitments
 visible, make daily life easier, track what Kristian is trying to understand,
 and notice evidence-backed patterns without turning the assistant into a
@@ -9,10 +9,10 @@ therapist or mythology engine.
 ## Runtime shape
 
 ```txt
-Facebook Messenger ─▶ OpenClaw gateway ─▶ Companion workspace
+Facebook Messenger ─▶ OpenClaw gateway ─▶ Albert workspace
                                       │
                                       ├─ openclaw-messenger plugin
-                                      ├─ cognee-openclaw indexes companion/memory/
+                                      ├─ cognee-openclaw indexes albert/memory/
                                       ├─ composio-limited tools for Gmail/Calendar/Tasks/LinkedIn
                                       └─ scheduled jobs: morning brief, evening journal, nightly review
 ```
@@ -22,7 +22,7 @@ Facebook Messenger ─▶ OpenClaw gateway ─▶ Companion workspace
 Use OpenClaw's native workspace files only:
 
 ```txt
-companion/
+albert/
   SOUL.md      # voice/tone/boundaries
   AGENTS.md    # operating contract
   USER.md      # stable user facts
@@ -34,13 +34,13 @@ companion/
   methods/     # belief/pattern methods
 ```
 
-`companion/archive/design/PHILOSOPHY.old.md` is archived rationale, not runtime
+`albert/archive/design/PHILOSOPHY.old.md` is archived rationale, not runtime
 instruction.
 
 ## Memory directory
 
 ```txt
-companion/memory/
+albert/memory/
   profile/          stable/current context and preferences
   life/             commitments, journals, briefings, nightly/weekly reviews
   observations/     lightweight dated observations

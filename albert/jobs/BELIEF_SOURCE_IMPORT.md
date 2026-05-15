@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Import a structured belief source packet created elsewhere. Companion does not
+Import a structured belief source packet created elsewhere. Albert does not
 ingest books directly. Another agent or Kristian may provide the book/source
 title, topic, and beliefs the source is trying to change.
 

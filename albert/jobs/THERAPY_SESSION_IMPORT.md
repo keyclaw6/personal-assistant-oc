@@ -3,7 +3,7 @@
 ## Purpose
 
 Import therapy sessions, therapist notes, or belief-change chats with another
-language model so Companion can track what Kristian said, what landed, what did
+language model so Albert can track what Kristian said, what landed, what did
 not land, and which beliefs are changing.
 
 This is high-value evidence because it contains Kristian's own words and

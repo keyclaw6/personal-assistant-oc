@@ -1,7 +1,7 @@
 {
     "agents": {
         "defaults": {
-            "workspace": "<UPDATE_ON_NEW_MACHINE>/companion",
+            "workspace": "<UPDATE_ON_NEW_MACHINE>/albert",
             "models": {
                 "openrouter/deepseek/deepseek-v4-flash": {}
             },
@@ -33,7 +33,7 @@
                 "memoryFlush": {
                     "enabled": true,
                     "softThresholdTokens": 20000,
-                    "systemPrompt": "Session is nearing compaction. Save only durable user facts, commitments, corrections, decisions, preferences, and open loops to Companion memory files. Keep facts separate from hypotheses. Reply NO_REPLY if nothing durable should be saved.",
+                    "systemPrompt": "Session is nearing compaction. Save only durable user facts, commitments, corrections, decisions, preferences, and open loops to Albert memory files. Keep facts separate from hypotheses. Reply NO_REPLY if nothing durable should be saved.",
                     "prompt": "Pre-compaction memory flush. GPT-5.5 has a 400K context window but the effective OpenAI compaction boundary is about 260K tokens because of output reserve. Before compaction, write durable information to memory/observations/YYYY-MM.md, memory/life/commitments.md, memory/conflicts.md, or relevant pattern/belief staging files. Do not save speculation as truth. Reply NO_REPLY if nothing durable should be saved."
                 }
             }
@@ -42,7 +42,7 @@
             {
                 "id": "main",
                 "identity": {
-                    "name": "Companion"
+                    "name": "Albert"
                 }
             }
         ]

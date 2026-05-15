@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Improve Companion's prompts by finding real behavior failures and proposing
+Improve Albert's prompts by finding real behavior failures and proposing
 small, testable changes.
 
 This job may draft changes. It must not silently weaken safety, privacy,

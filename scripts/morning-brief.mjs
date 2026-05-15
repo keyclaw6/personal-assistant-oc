@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
-const WORKSPACE = path.join(REPO, "companion");
+const WORKSPACE = path.join(REPO, "albert");
 const DRY_RUN = process.argv.includes("--dry-run");
 const today = new Date().toISOString().slice(0, 10);
 const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);

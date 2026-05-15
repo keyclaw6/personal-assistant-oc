@@ -7,7 +7,7 @@ OpenClaw is powerful because it can read files, run tools, browse, and connect c
 Default posture for this repo:
 
 - Gateway stays on loopback unless a remote access plan is documented.
-- Single agent (Companion) with Messenger as primary channel.
+- Single agent (Albert) with Messenger as primary channel.
 - `.openclaw/`, auth profiles, tokens, credentials, logs, and local runtime state stay out of Git.
 - Third-party skills are treated as code, not harmless prompts.
 - External content is treated as untrusted even when it arrives from Kristian.
@@ -43,7 +43,7 @@ If `openclaw security audit --deep` asks for the Gateway token, do not paste or 
 
 - Do not store API keys, passwords, cookies, private keys, session tokens, or OAuth tokens in memory.
 - Use `<private>...</private>` blocks only for sensitive notes that should be stripped from compiled artifacts.
-- Conflicts go to `companion/memory/conflicts.md`; do not silently overwrite old claims.
+- Conflicts go to `albert/memory/conflicts.md`; do not silently overwrite old claims.
 - `.cognee_system/`, `.cognee_data/`, `.env.cognee` are gitignored.
 
 ## Git Policy

@@ -7,20 +7,20 @@ Schedule: every day at 07:30 Europe/Copenhagen.
 Goal: give Kristian a short private phone-readable start-of-day brief.
 
 Delivery: Messenger (primary). File fallback writes to
-`companion/memory/life/briefings/YYYY-MM-DD.md`. Android notification fallback
+`albert/memory/life/briefings/YYYY-MM-DD.md`. Android notification fallback
 is future/optional unless explicitly wired.
 
 Required checks:
 
 1. Calendar events today via Composio Calendar.
 2. Tasks/reminders due today, overdue, or stale via Composio Google Tasks.
-3. Commitments due today, overdue, or waiting for reply (`companion/memory/life/commitments.md`).
+3. Commitments due today, overdue, or waiting for reply (`albert/memory/life/commitments.md`).
 4. New or unanswered Gmail messages via Composio Gmail tools.
 5. Active beliefs or patterns only when relevant today or explicitly requested as
    a nudge.
 6. Yesterday's journal/nightly review if it produced a useful morning note.
 
-Output shape follows `companion/jobs/MORNING_BRIEF.md`:
+Output shape follows `albert/jobs/MORNING_BRIEF.md`:
 
 ```txt
 Morning, Kristian.
@@ -42,7 +42,7 @@ If a source is unavailable, include a one-line note and continue with the remain
 
 ## Commitment Tracker
 
-Commitments live in `companion/memory/life/commitments.md` as a rolling table.
+Commitments live in `albert/memory/life/commitments.md` as a rolling table.
 
 Morning brief should show:
 
@@ -66,20 +66,20 @@ should:
 When a capture workflow is explicitly run after a meaningful Messenger
 conversation:
 
-1. Write `companion/memory/sessions/YYYY-MM-DD/messenger.summary.md` — concise
+1. Write `albert/memory/sessions/YYYY-MM-DD/messenger.summary.md` — concise
    factual summary.
 2. Store raw transcript only if Kristian explicitly wants it.
 3. Next morning brief may include the concrete captures.
 
 Therapy sessions or belief-change chats with another LLM use
-`companion/jobs/THERAPY_SESSION_IMPORT.md` and write
-`companion/memory/sessions/YYYY-MM-DD/<source>.summary.md`.
+`albert/jobs/THERAPY_SESSION_IMPORT.md` and write
+`albert/memory/sessions/YYYY-MM-DD/<source>.summary.md`.
 
 Structured book-derived or agent-derived belief lists use
-`companion/jobs/BELIEF_SOURCE_IMPORT.md` and write
-`companion/memory/belief-sources/<slug>.md`. Companion does not ingest raw books.
+`albert/jobs/BELIEF_SOURCE_IMPORT.md` and write
+`albert/memory/belief-sources/<slug>.md`. Albert does not ingest raw books.
 
-Messenger message `forget: <fact>` asks Companion to delete or edit the relevant
+Messenger message `forget: <fact>` asks Albert to delete or edit the relevant
 file when the target is clear; Cognee re-syncs.
 
 ## Session Checkpoint
@@ -88,14 +88,14 @@ Run before manual compaction/reset, and optionally before long maintenance
 sessions. This is not proactive clearing; it is a safety step that writes
 durable state before context may be summarized or replaced.
 
-Instructions live in `companion/jobs/SESSION_CHECKPOINT.md`.
+Instructions live in `albert/jobs/SESSION_CHECKPOINT.md`.
 
 Allowed writes:
 
-- `companion/memory/observations/YYYY-MM.md`
-- `companion/memory/life/commitments.md`
-- `companion/memory/conflicts.md`
-- `companion/memory/life/dream-staging/` for review proposals
+- `albert/memory/observations/YYYY-MM.md`
+- `albert/memory/life/commitments.md`
+- `albert/memory/conflicts.md`
+- `albert/memory/life/dream-staging/` for review proposals
 
 The checkpoint should reply `NO_REPLY` when nothing durable should be saved.
 
@@ -109,7 +109,7 @@ asking whether he wants to journal.
 Journal file:
 
 ```txt
-companion/memory/life/journals/YYYY-MM-DD.md
+albert/memory/life/journals/YYYY-MM-DD.md
 ```
 
 Prompt shape:
@@ -134,9 +134,9 @@ journal/session material.
 Allowed:
 
 - read local memory files
-- write `companion/memory/life/reflections/YYYY-MM-DD.md`
-- write `companion/memory/life/dream-logs/YYYY-MM-DD.md`
-- write review proposals under `companion/memory/life/dream-staging/`
+- write `albert/memory/life/reflections/YYYY-MM-DD.md`
+- write `albert/memory/life/dream-logs/YYYY-MM-DD.md`
+- write review proposals under `albert/memory/life/dream-staging/`
 
 Not allowed in this job:
 

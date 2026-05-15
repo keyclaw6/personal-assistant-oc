@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * nightly-dream.mjs — Compatibility helper for the Companion nightly review job.
+ * nightly-dream.mjs — Compatibility helper for the Albert nightly review job.
  *
  * This script does not run the reflection itself. It provides the exact agent
  * message for the scheduled OpenClaw instance and checks whether yesterday's
- * reflection exists. The actual thinking is done by Companion using
- * companion/jobs/NIGHTLY_REVIEW.md.
+ * reflection exists. The actual thinking is done by Albert using
+ * albert/jobs/NIGHTLY_REVIEW.md.
  *
  * Usage:
  *   node scripts/nightly-dream.mjs --message
@@ -18,19 +18,21 @@ import path from "node:path";
 const REPO = process.env.PERSONAL_ASSISTANT_REPO
   ? path.resolve(process.env.PERSONAL_ASSISTANT_REPO)
   : path.resolve(import.meta.dirname, "..");
-const WORKSPACE = process.env.COMPANION_WORKSPACE
+const WORKSPACE = process.env.ALBERT_WORKSPACE
+  ? path.resolve(process.env.ALBERT_WORKSPACE)
+  : process.env.COMPANION_WORKSPACE
   ? path.resolve(process.env.COMPANION_WORKSPACE)
-  : path.join(REPO, "companion");
+  : path.join(REPO, "albert");
 const TZ = "Europe/Copenhagen";
 const args = new Set(process.argv.slice(2));
 const json = args.has("--json");
 const explicitDate = valueAfter("--date");
-const nowMs = process.env.COMPANION_TEST_NOW
-  ? new Date(process.env.COMPANION_TEST_NOW).getTime()
+const nowMs = (process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW)
+  ? new Date(process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW).getTime()
   : Date.now();
 
 if (Number.isNaN(nowMs)) {
-  throw new Error(`Invalid COMPANION_TEST_NOW: ${process.env.COMPANION_TEST_NOW}`);
+  throw new Error(`Invalid ALBERT_TEST_NOW/COMPANION_TEST_NOW: ${process.env.ALBERT_TEST_NOW ?? process.env.COMPANION_TEST_NOW}`);
 }
 
 function valueAfter(flag) {
@@ -72,7 +74,7 @@ function status(date = localDate(-1)) {
 }
 
 function dreamMessage() {
-  return `Run Companion's nightly review now.
+  return `Run Albert's nightly review now.
 
 Use ${path.join(WORKSPACE, "jobs/NIGHTLY_REVIEW.md")} as the operating instructions.
 

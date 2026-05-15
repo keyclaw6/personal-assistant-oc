@@ -13,7 +13,7 @@ const testNow = "2026-05-15T12:00:00.000Z";
 const targetDate = "2026-05-14";
 
 async function makeWorkspace() {
-  const workspace = await mkdtemp(path.join(tmpdir(), "companion-dream-e2e-"));
+  const workspace = await mkdtemp(path.join(tmpdir(), "albert-review-e2e-"));
   await mkdir(path.join(workspace, "memory/life/reflections"), { recursive: true });
   await mkdir(path.join(workspace, "jobs"), { recursive: true });
   await writeFile(path.join(workspace, "jobs/NIGHTLY_REVIEW.md"), "# NIGHTLY_REVIEW\n");
@@ -25,8 +25,8 @@ async function runDream(args, workspace) {
     cwd: repoRoot,
     env: {
       ...process.env,
-      COMPANION_WORKSPACE: workspace,
-      COMPANION_TEST_NOW: testNow,
+      ALBERT_WORKSPACE: workspace,
+      ALBERT_TEST_NOW: testNow,
     },
   });
 }
@@ -36,7 +36,7 @@ test("nightly review message contains the agreed scope constraints", async () =>
 
   const { stdout } = await runDream(["--message"], workspace);
 
-  assert.match(stdout, /Run Companion's nightly review now\./);
+  assert.match(stdout, /Run Albert's nightly review now\./);
   assert.match(stdout, new RegExp(`Use ${escapeRegExp(path.join(workspace, "jobs/NIGHTLY_REVIEW.md"))} as the operating instructions\\.`));
   assert.match(stdout, /This is ONLY the nightly local review\/consolidation pass\./);
   assert.match(stdout, /Do not run sensor sweeps\./);
