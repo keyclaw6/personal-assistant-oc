@@ -35,8 +35,11 @@ test("missing journal produces the evening reminder in dry-run mode", async () =
   const { stdout } = await runJournal(["--send", "--dry-run"], workspace);
 
   assert.match(stdout, /Evening journal check-in for 2026-05-15/);
-  assert.match(stdout, /What actually happened today\?/);
-  assert.match(stdout, /If you want to skip tonight, just say: skip journal\./);
+  assert.match(stdout, /Send a short text or voice note:/);
+  assert.match(stdout, /- what happened/);
+  assert.match(stdout, /- what mattered/);
+  assert.match(stdout, /- anything for tomorrow/);
+  assert.match(stdout, /If you want to skip tonight, say: skip journal\./);
   assert.doesNotMatch(stdout, /already exists/);
   assert.doesNotMatch(stdout, /Journal skipped/);
 });
@@ -52,7 +55,7 @@ test("existing journal suppresses the reminder", async () => {
 
   assert.match(stdout, /Journal already exists for 2026-05-15/);
   assert.doesNotMatch(stdout, /Evening journal check-in/);
-  assert.doesNotMatch(stdout, /What actually happened today\?/);
+  assert.doesNotMatch(stdout, /what happened/);
 });
 
 test("skipped journal suppresses the reminder", async () => {
@@ -66,7 +69,7 @@ test("skipped journal suppresses the reminder", async () => {
 
   assert.match(stdout, /Journal skipped for 2026-05-15/);
   assert.doesNotMatch(stdout, /Evening journal check-in/);
-  assert.doesNotMatch(stdout, /What actually happened today\?/);
+  assert.doesNotMatch(stdout, /what happened/);
 });
 
 test("status reports existing and skipped journal state as JSON", async () => {

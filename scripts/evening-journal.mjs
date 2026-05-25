@@ -71,16 +71,12 @@ function journalState(date = localDate()) {
 function reminderMessage(date = localDate()) {
   return `Evening journal check-in for ${date}.
 
-Send me a short text or voice note with whatever is true. A few bullets is enough:
+Send a short text or voice note:
+- what happened
+- what mattered
+- anything for tomorrow
 
-1. What actually happened today?
-2. What mattered, emotionally or practically?
-3. What did you avoid, postpone, or keep circling?
-4. Any commitments, replies, promises, or decisions?
-5. What does tomorrow need from you?
-6. Anything from today that should not be remembered?
-
-If you want to skip tonight, just say: skip journal.`;
+If you want to skip tonight, say: skip journal.`;
 }
 
 function status(date = localDate()) {

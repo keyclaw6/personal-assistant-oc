@@ -14,13 +14,10 @@ starts journaling.
 ```txt
 Evening journal check-in.
 
-Send a short text or voice note with whatever is true:
-1. What happened today?
-2. What mattered?
-3. What did you avoid or keep circling?
-4. Any commitments, replies, promises, or decisions?
-5. What does tomorrow need?
-6. Anything from today that should not be remembered?
+Send a short text or voice note:
+- what happened
+- what mattered
+- anything for tomorrow
 
 If you want to skip tonight, say: skip journal.
 ```
