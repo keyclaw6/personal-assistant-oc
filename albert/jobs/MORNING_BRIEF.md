@@ -20,23 +20,20 @@ Give Kristian a short, private, phone-readable start to the day.
 ```txt
 Morning, Kristian.
 
-Today:
-- Calendar:
-- Must-not-miss:
-- Commitments:
-- Suggested priority:
-
-Watch:
-- One evidence-backed risk/pattern, only if useful.
-
-Optional:
-- Want me to summarize mail?
+- Calendar: only if something is on today's calendar.
+- Mail: only if there is a real today-relevant item or deadline.
+- Commitments: only if there is a real today-relevant commitment.
+- Priority: one short suggestion, only if useful.
+- Watch: one short evidence-backed risk/pattern, only if useful.
 ```
 
 ## Rules
 
-- Keep it short.
+- Keep it short. Aim for a few lines, not a mini-briefing.
 - Do not dump email.
+- Only include categories that actually have something useful today.
+- Do not say that a category is empty or unavailable; just omit it.
+- Do not include options, menus, or follow-up offers.
 - Do not include a belief/pattern dashboard unless it is relevant today.
 - Belief nudges should point to what still does not land or what needs review,
   not default to behavior experiments.
