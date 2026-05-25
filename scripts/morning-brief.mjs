@@ -45,7 +45,7 @@ const yesterdayReview = read(`memory/life/reflections/${yesterday}.md`);
 const beliefsIndex = read("memory/beliefs/_index.md");
 const activeBeliefs = beliefsIndex
   .split("\n")
-  .filter((l) => l.includes("working") || l.includes("testing") || l.includes("active"));
+  .filter((l) => l.startsWith("|") && (l.includes("working") || l.includes("testing") || l.includes("active")));
 
 // 5. Captured yesterday
 const yesterdayClarification = read(
@@ -57,46 +57,53 @@ const yesterdayClarification = read(
 const contextLines = currentContext
   .split("\n")
   .filter((l) => l.trim() && !l.startsWith("#"))
-  .filter((l) => !/empty by design|populated through conversation/i.test(l));
-const priority = contextLines.slice(0, 2).join(" ") || "No explicit current priority recorded yet.";
+  .filter((l) => !/empty by design|populated through conversation|no explicit current priority recorded yet/i.test(l));
+const priority = contextLines.slice(0, 2).join(" ");
 
-let brief = `# Morning Brief — ${today}\n\n`;
-brief += `Morning, Kristian.\n\n`;
-brief += `## Today\n\n`;
-brief += `- Calendar: live calendar is gathered by the scheduled agent via Composio Calendar. This script is file-local fallback only.\n`;
-brief += `- Must-not-miss: no file-local must-not-miss item recorded.\n`;
+const lines = [];
+
+lines.push(`Morning, Kristian.`);
 
 // Commitments
 if (commitmentLines.length > 0) {
-  brief += `- Commitments:\n`;
+  lines.push(`Commitments:`);
   for (const line of commitmentLines.slice(0, 5)) {
-    brief += `  ${line}\n`;
+    lines.push(`  ${line}`);
   }
-} else {
-  brief += `- Commitments: no tracked commitments.\n`;
 }
-brief += `- Suggested priority: ${priority}\n`;
+
+if (priority) {
+  lines.push(`Priority: ${priority}`);
+}
 
 const watchLines = [];
 if (activeBeliefs.length > 0) {
   watchLines.push(...activeBeliefs.slice(0, 2));
 }
 if (yesterdayReview.trim()) {
-  const lines = yesterdayReview.split("\n").filter((l) => l.trim() && !l.startsWith("#"));
-  watchLines.push(...lines.slice(0, 2));
+  const lines = yesterdayReview
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("#") && !l.startsWith("<!--"));
+  watchLines.push(
+    ...lines
+      .filter((l) => !/no evening journal was present|no journal/i.test(l))
+      .slice(0, 2),
+  );
 }
 if (yesterdayClarification.trim()) {
   const lines = yesterdayClarification.split("\n").filter((l) => l.trim());
   watchLines.push(...lines.slice(0, 2));
 }
 
-if (watchLines.length > 0) {
-  brief += `\n## Watch\n\n`;
-  for (const line of watchLines.slice(0, 3)) brief += `- ${line}\n`;
+const usefulWatchLines = watchLines.filter(
+  (line) => !/^no\b/i.test(line.trim()),
+);
+
+if (usefulWatchLines.length > 0) {
+  lines.push(`Watch: ${usefulWatchLines[0]}`);
 }
 
-brief += `\n## Optional\n\n`;
-brief += `- Want me to summarize mail? Live mail headline is gathered by the scheduled agent via Composio Gmail.\n`;
+let brief = `# Morning Brief — ${today}\n\n${lines.join("\n")}\n`;
 
 // ── output ───────────────────────────────────────────────────────────────────
 
