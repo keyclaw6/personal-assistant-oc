@@ -173,7 +173,8 @@ def wilson_lower(hits: int, n: int, z: float = 1.2816) -> float:
     return max(0.0, (center - rad) / denom)
 
 
-def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None, th: dict) -> dict:
+def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None,
+                        th: dict, live: bool = False) -> dict:
     """Fold one resolved call into a (leaker, call_class) row.
 
     F1: ONLY calls with a genuine observed price at-or-before post time count
@@ -182,11 +183,15 @@ def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None, th: d
     F3: the gate uses the Wilson lower bound, not the point estimate:
         edge_lcb = wilson_lower(hits, n) − avg_price_at_call ≥ verify_min_edge
     Status is recomputed on every fold, so live results can also DEMOTE a
-    verified leaker back to probation.
+    verified leaker back to probation — historical verification is provisional
+    and continuously re-tested prospectively. n_live counts the prospective
+    (live-tracked) priced folds so the historical/live split stays visible.
     """
     if price_at_call is None:
         row["n_unpriced"] = int(row.get("n_unpriced") or 0) + 1
         return row
+    if live:
+        row["n_live"] = int(row.get("n_live") or 0) + 1
     n = int(row.get("n_calls") or 0)
     hits = int(row.get("hits") or 0)
     avg_p = float(row.get("avg_price_at_call") or 0.0)

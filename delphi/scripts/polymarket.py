@@ -41,8 +41,13 @@ def norm_market(m: dict) -> dict:
             yes_i = i
             break
     no_i = 1 - yes_i if len(tokens) > 1 else None
+    event_id = ""
+    evs = m.get("events")
+    if isinstance(evs, list) and evs and isinstance(evs[0], dict):
+        event_id = str(evs[0].get("id", ""))
     return {
         "id": str(m.get("id", "")),
+        "event_id": event_id,
         "question": m.get("question", "") or m.get("title", ""),
         "description": (m.get("description") or "")[:1200],
         "end_date": m.get("endDate", "") or m.get("end_date", ""),
@@ -75,7 +80,10 @@ def search_markets(query: str, closed: bool, limit: int = 8) -> list[dict] | Non
         data = _get_json(url)
         for ev in (data.get("events") or []):
             for m in (ev.get("markets") or []):
-                results.append(norm_market(m))
+                nm = norm_market(m)
+                if not nm["event_id"]:
+                    nm["event_id"] = str(ev.get("id", ""))
+                results.append(nm)
     except Exception as e:  # noqa: BLE001
         failed += 1
         print(f"  [polymarket] public-search failed ({e}); falling back to /markets")
@@ -115,6 +123,34 @@ def midpoint(token_id: str) -> float | None:
     except Exception as e:  # noqa: BLE001
         print(f"  [polymarket] midpoint {token_id[:16]}…: {e}")
         return None
+
+
+def _book_price(token_id: str, order_side: str) -> float | None:
+    """CLOB /price. NOTE the semantics (live-verified 2026-07-13): `side`
+    refers to the ORDERS in the book — side=sell returns the lowest SELL
+    order (the ask you pay to buy), side=buy the highest BUY order (the bid
+    you receive selling)."""
+    if not token_id:
+        return None
+    try:
+        data = _get_json(f"{CLOB}/price?token_id={urllib.parse.quote(token_id)}"
+                         f"&side={urllib.parse.quote(order_side)}")
+        p = float(data.get("price"))
+        return p if 0.0 < p < 1.0 else None
+    except Exception as e:  # noqa: BLE001
+        print(f"  [polymarket] price {order_side} {token_id[:16]}…: {e}")
+        return None
+
+
+def best_ask(token_id: str) -> float | None:
+    """EXECUTABLE price to BUY this token now (round-2 F1: fills come from
+    this, never from midpoints)."""
+    return _book_price(token_id, "sell")
+
+
+def best_bid(token_id: str) -> float | None:
+    """Executable price to SELL this token now."""
+    return _book_price(token_id, "buy")
 
 
 def price_at(token_id: str, unix_ts: int, max_stale_hours: int = 48) -> float | None:

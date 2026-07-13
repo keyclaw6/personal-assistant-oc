@@ -9,7 +9,8 @@ Given the new posts and the domain brief, extract every specific, falsifiable
 claim about a future or just-happened event:
 
 - `claim`: one self-contained sentence (name the subject explicitly)
-- `post_ts`, `post_url`: from the post
+- `post_index`: the integer index of the source post as numbered in the NEW
+  POSTS list (scripts copy timestamp/URL from the source post)
 - `call_class`: MUST come from the fixed taxonomy injected below ("FIXED
   CALL-CLASS TAXONOMY"), preferring one of this leaker's existing classes when
   it fits. Never invent new class names — anything else is normalized to
@@ -25,7 +26,7 @@ Most sweeps should output an empty list — that is the normal, correct outcome.
 
 Output JSON only:
 ```json
-{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "market_query": "...", "hedged": false, "urgency": "normal"}], "lessons": ["optional, ≤2, only durable discoveries"]}
+{"claims": [{"claim": "...", "post_index": 0, "call_class": "...", "market_query": "...", "hedged": false, "urgency": "normal"}], "lessons": ["optional, ≤2, only durable discoveries"]}
 ```
 
 ## Market mapping (when given a claim + candidate open markets)

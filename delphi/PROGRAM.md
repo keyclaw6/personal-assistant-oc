@@ -17,9 +17,12 @@ stay deterministic. **Agents think; the scoreboard counts.**
    signals/positions/resolved/results. Append only.
 3. **Gate arithmetic is script-owned.** Edge, Kelly, hit rates, Brier — computed
    by scripts, never by an LLM.
-4. **Isolation.** Nothing outside `delphi/` is read or written. Albert and the
-   Hermes runtime are not aware of Delphi. In Cognee, Delphi touches only its
-   own dataset (§5).
+4. **Isolation.** Delphi never reads or writes Albert's or the Hermes
+   runtime's files; Albert is not aware of Delphi. In Cognee, Delphi touches
+   only its own dataset (§5). Documented narrow exceptions: the dotenvx env
+   file `.env.delphi` at the repo root (read-only, via `dotenvx run`), the
+   daily git snapshot commit (staged paths scoped to `delphi/` only), and LLM
+   subprocesses launched with `delphi/` as their working directory.
 5. **The price at signal/post time is sacred.** A leaker's value is beating the
    price the market offered when they posted — accuracy alone is meaningless.
 6. This file changes only by founder decision.
@@ -51,7 +54,7 @@ same philosophy as the assistant's memory system.
 | Stage | Cadence | What it does |
 |---|---|---|
 | **explorer** | every 3 h during kickstart, then daily | Qualifies seeds first, then new candidates; when the queue is empty it deepens ANY partially-scored, non-verified leaker with an OLDER, paginated history window. Extracts dated claims → maps each claim to at most one resolved market → scripts score hit-rate vs price-at-post-time (priced calls only) → promotion at the §3 gate. Every scored call is a `status=historical` signal row — the FP/FN audit trail — with one credit per (leaker, market) pair, ever. |
-| **heartbeat** | every 10 min | Sweeps verified+probation roster for new posts → claims → open-market match → signal rows with price-at-detection. Probation rows tracked, never bet. |
+| **heartbeat** | every 10 min | Sweeps verified+probation roster for new posts, processed OLDEST-FIRST with a per-post atomic commit — the cursor advances only through fully-processed posts, so backlogs drain across sweeps and transient failures never skip a post. Claims → open-market match → signal rows with price-at-detection. Probation rows tracked, never bet. |
 | **judge** | after each heartbeat | Verified signals only. Skips markets Delphi already holds (no exposure stacking). Independent p_yes + confidence with leaker scorecard, own calibration record, and retrieved similar past cases → scripts gate and size. |
 | **resolve** | every 6 h | Closes positions idempotently (P&L, Brier); folds EVERY resolved signal — tracked, passed, bet, and expired — into per-leaker per-call-class stats, one credit per (leaker, market), earliest post wins; feeds summaries to Cognee. |
 | **orchestrator** | hourly | §6. |
@@ -78,11 +81,15 @@ one credit:   at most ONE market per claim, and at most one scored call per
               cannot double-count. Chosen row carries stat_counted=true.
 judge gate:   leaker verified for call_class AND open market matched AND
               liquidity ≥ min AND no open position on that market
-bet gate:     fill = side_quote + slippage;  edge = p_side − fill ≥ 0.10
-              AND confidence ≥ 0.60. NO-side quotes use the NO token's book
-              when available.
+bet gate:     fill = FRESH EXECUTABLE best ask for the token being bought
+              (fetched AFTER judgment, never a stale midpoint) + slippage
+              buffer;  edge = p_side − fill ≥ 0.10 AND confidence ≥ 0.60.
+              No fresh quote → the signal stays pending. Judge outputs with
+              out-of-range p/confidence are REJECTED, never clamped.
 sizing:       min(0.25 × kelly(p_side, fill) × available, 5% × bankroll);
               shares = size / fill;  P&L settles those shares at 0/1.
+              (No depth walking: max stake is 5% of a $1k book vs a $1k
+              liquidity floor; the ask+buffer fill is conservative.)
 account:      self-financing — equity = bankroll + realized P&L;
               available = equity − open cost. Status is recomputed on every
               fold, so live results can demote a verified leaker.
@@ -148,9 +155,26 @@ The orchestrator is the top-level maintainer/goal-direction agent. Hourly:
 Mechanical failures (parse error, dead endpoint, rate limit) are fixed
 mechanically or skipped-and-logged — never treated as semantic events.
 
-## §7 Known weak spots (measure, then amend)
+## §7 Known weak spots and accepted prototype limits
 
-Claim→market matching precision; Exa X-coverage latency/gaps; Gamma search
-recall; unpriced-history conservatism slowing verification. These are the
-expected first experiment targets — evidence lives in `historical` and
+Expected first experiment targets (measure, then amend): claim→market matching
+precision; Exa X-coverage latency/gaps; Gamma search recall; unpriced-history
+conservatism slowing verification. Evidence lives in `historical` and
 `no_market` signal rows and results.tsv.
+
+Accepted limits — deliberate scope decisions for a paper prototype, each with
+its mitigation, NOT open bugs:
+
+- **Survivorship in historical feeds** (deleted posts, bounded X search):
+  historical qualification is therefore provisional by design; every verified
+  leaker keeps being re-tested prospectively on live folds (`n_live` column),
+  and the Wilson gate demotes on live underperformance automatically.
+- **Extraction outcome-awareness**: the LLM extracting historical claims may
+  know outcomes. Mitigated by the extract-everything instruction, the removal
+  of the LLM scoreability gate, and prospective re-testing — not eliminable
+  in a prototype without immutable archives.
+- **No order-book depth walking**: stakes are capped at 5% of a $1k paper book
+  against a $1k liquidity floor; fills use the executable best ask plus a
+  conservative buffer. Bias is against the book, never for it.
+- **Serialized jobs**: heartbeat sweeps may skip while explorer holds the
+  state lock; the oldest-first cursor drains any backlog afterwards.

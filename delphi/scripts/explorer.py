@@ -87,16 +87,33 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
         return f"{handle}: no history fetched in window"
 
     prompt_t = (ROOT / "prompts" / "explorer.md").read_text(encoding="utf-8")
-    post_block = "\n".join(f"- [{p['ts']}] {p['url']}\n  {p['text'][:400]}" for p in posts)
+    # F4 (round 2): posts get stable indices; scripts copy provenance from the
+    # indexed source post — LLM-echoed timestamps/URLs are never trusted.
+    post_block = "\n".join(f"- post_index {i} | [{p['ts']}] {p['url']}\n  {p['text'][:400]}"
+                           for i, p in enumerate(posts))
     prompt = (ctx + "\n\n" + prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
               + f"\n\n## CANDIDATE\n{platform}/{handle}"
               + "\n\n## POST HISTORY\n" + post_block
               + "\n\n## REQUEST\nPerform Task B now. JSON only.")
-    j = call_json("explorer", prompt, cfg) or {}
+    j = call_json("explorer", prompt, cfg)
+    if j is None or not isinstance(j.get("claims"), list):
+        return f"{handle}: extraction unparseable — retry next run (F4)"
     append_lessons("explorer", j.get("lessons"))
-    claims = [c for c in j.get("claims", []) if c.get("checkable")][:30]
+    # F2 (round 2): NO LLM checkable-gate — every falsifiable claim goes to the
+    # deterministic resolved-market lookup, which decides scoreability.
+    claims = []
+    for c in j.get("claims", []):
+        try:
+            p = posts[int(c["post_index"])]
+        except (KeyError, ValueError, TypeError, IndexError):
+            continue  # no verifiable provenance → claim dropped
+        if not str(c.get("claim", "")).strip():
+            continue
+        c["post_ts"], c["post_url"] = p["ts"], p["url"]  # canonical provenance
+        claims.append(c)
+    claims = claims[:40]
     if not claims:
-        return f"{handle}: 0 checkable claims in {len(posts)} posts"
+        return f"{handle}: 0 usable claims in {len(posts)} posts"
 
     pairs, market_by_id, search_failed = [], {}, 0
     for i, c in enumerate(claims):
@@ -122,27 +139,34 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
 
     # F2: keep only the FIRST match per claim — one market per claim.
     best_by_claim: dict[int, dict] = {}
-    for mp in j.get("mappings", []):
+    for mp in (j.get("mappings") or []):
         if not mp.get("match"):
             continue
         try:
             ci = int(mp["claim_index"])
         except (KeyError, ValueError, TypeError):
             continue
-        if ci not in best_by_claim:
+        if 0 <= ci < len(claims) and ci not in best_by_claim:
             best_by_claim[ci] = mp
 
+    # F3 (round 2): deterministic EARLIEST-POST-FIRST scoring order, so the
+    # origination call takes the (leaker, event) credit — not whatever order
+    # the LLM listed, and not a later correction.
+    ordered = sorted(best_by_claim.items(),
+                     key=lambda kv: claims[kv[0]].get("post_ts") or "9999")
+
     scored = unpriced = verified = skipped_dupe = 0
-    for ci, mp in sorted(best_by_claim.items()):
-        if ci >= len(claims):
-            continue
+    for ci, mp in ordered:
         claim = claims[ci]
         market = market_by_id.get(str(mp.get("market_id", "")))
         side = str(mp.get("implied_side", "")).upper()
         if not market or side not in ("YES", "NO"):
             continue
-        pair_key = (leaker_id, market["id"])
-        if pair_key in counted_pairs:  # F2: one credit per leaker×market, ever
+        # F3 (round 2): credit key is the EVENT when known, so overlapping
+        # deadline-ladder contracts of one event cannot multi-credit.
+        event_key = market.get("event_id") or market["id"]
+        pair_key = (leaker_id, event_key)
+        if pair_key in counted_pairs:
             skipped_dupe += 1
             continue
         winner = pm.winning_side(market)
@@ -160,7 +184,8 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
             "leaker_id": leaker_id, "platform": platform,
             "post_url": claim.get("post_url", ""), "post_ts": claim.get("post_ts", ""),
             "claim": claim.get("claim", ""), "call_class": cls, "hedged": "false",
-            "market_id": market["id"], "market_question": market["question"],
+            "market_id": market["id"], "event_id": market.get("event_id", ""),
+            "market_question": market["question"],
             "token_id": market["yes_token"], "side": side,
             "price_at_signal": "" if price_yes is None else f"{price_yes:.3f}",
             "liquidity_usd": f"{market['liquidity']:.0f}",
@@ -210,7 +235,7 @@ def main():
     ctx = agent_context("explorer")
     leakers = read_tsv(ddir / "leakers.tsv")
     candidates = read_tsv(ddir / "candidates.tsv")
-    counted_pairs = {(s["leaker_id"], s["market_id"])
+    counted_pairs = {(s["leaker_id"], s.get("event_id") or s["market_id"])
                      for s in read_tsv(ddir / "signals.tsv")
                      if s["status"] == "historical" or s.get("stat_counted") == "true"}
 

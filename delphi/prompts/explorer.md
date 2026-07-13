@@ -26,26 +26,34 @@ actually seen referenced in the provided material or reliably know to exist.
 
 ## Task B — extract historical claims (when given a candidate's post history)
 
-From the posts provided, extract every specific, falsifiable claim about a future
-event. For each claim:
+From the posts provided, extract EVERY specific, falsifiable claim about a
+future event — **regardless of whether the claim looks like it turned out
+right or wrong, and regardless of whether you know the outcome.** This is a
+scientific record: omitting a leaker's misses corrupts their scorecard and is
+the worst error you can make here. Do not judge scoreability — a deterministic
+market lookup decides that, not you.
+
+For each claim:
 
 - `claim`: one sentence, self-contained (include the subject by name)
-- `post_ts`, `post_url`: from the post
+- `post_index`: the integer index of the source post as numbered in the POST
+  HISTORY list (the scripts copy the timestamp/URL from the source post —
+  your other fields are not trusted for provenance)
 - `call_class`: MUST be one of the domain's fixed taxonomy — for ai-releases:
   `release-timing`, `model-existence`, `feature-sighting`, `benchmark-position`,
   `org-event` — or `unclassified` if none fits. Never invent new class names;
   anything else is normalized to `unclassified` by the scripts.
-- `checkable`: true only if the outcome is now publicly known either way
 - `market_query`: 2–5 keywords likely to find a matching Polymarket market
 
-Skip: vague vibes ("something big coming"), retweets/quotes of other leakers
-(credit belongs to the origin), opinions, jokes. When a post hedges ("maybe",
-"hearing rumors"), still extract it but append " (hedged)" to the claim — hedged
-and confident calls may be different call classes of the same leaker.
+Skip only: vague vibes ("something big coming"), retweets/quotes of other
+leakers (credit belongs to the origin), opinions, jokes. When a post hedges
+("maybe", "hearing rumors"), still extract it but append " (hedged)" to the
+claim — hedged and confident calls may be different call classes of the same
+leaker.
 
 Output JSON only:
 ```json
-{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "checkable": true, "market_query": "..."}], "lessons": ["optional, ≤3, only durable discoveries worth remembering"]}
+{"claims": [{"claim": "...", "post_index": 0, "call_class": "...", "market_query": "..."}], "lessons": ["optional, ≤3, only durable discoveries worth remembering"]}
 ```
 
 ## Task C — map claims to found markets (when given claims + candidate markets)

@@ -43,7 +43,8 @@ def calibration_record(signals: list[dict]) -> str:
 
 
 def side_quote(market: dict, side: str, fallback_yes: float | None) -> tuple[float | None, bool]:
-    """Side-specific executable quote (F8). Returns (quote, stale_flag)."""
+    """Indicative side quote for the judge's PROMPT CONTEXT only. The actual
+    fill is re-quoted from the executable book AFTER judgment (round-2 F1)."""
     q_yes = pm.midpoint(market["yes_token"])
     if side == "YES":
         if q_yes is not None:
@@ -149,20 +150,39 @@ def main():
         if not j or "p_yes" not in j:
             s["note"] = (s.get("note", "") + " judge output unparseable — skipped").strip()
             continue
+        # F4 (round 2): STRICT range validation — out-of-range values (e.g.
+        # percentages like 87) are REJECTED, never clamped into a bet.
         try:
-            p_yes = min(0.99, max(0.01, float(j["p_yes"])))
-            conf = min(1.0, max(0.0, float(j.get("confidence", 0.0))))
+            p_yes = float(j["p_yes"])
+            conf = float(j.get("confidence", -1))
         except (TypeError, ValueError):
-            s["note"] = (s.get("note", "") + " judge output invalid — skipped").strip()
+            p_yes, conf = -1.0, -1.0
+        if not (0.0 < p_yes < 1.0) or not (0.0 <= conf <= 1.0):
+            s["status"] = "pass"
+            s["note"] = f"judge output out of range (p_yes={j.get('p_yes')!r}, conf={j.get('confidence')!r}) — rejected"
+            n_pass += 1
             continue
+        p_yes = min(0.99, max(0.01, p_yes))
         lessons_all += j.get("lessons") or []
 
+        # F1 (round 2): fetch a FRESH EXECUTABLE ask for the token we would
+        # actually buy, AFTER the (slow) judgment — never a stale midpoint.
+        buy_token = market["yes_token"] if s["side"] == "YES" else market.get("no_token", "")
+        ask = pm.best_ask(buy_token) if buy_token else None
+        if ask is None and s["side"] == "NO":
+            bid_yes = pm.best_bid(market["yes_token"])
+            ask = (1.0 - bid_yes) if bid_yes is not None else None
+        if ask is None:
+            s["note"] = "no fresh executable quote — retrying next run"
+            continue  # stays pending
+
         p_side, _ = side_values(s["side"], p_yes, 0.5)
-        fill = min(0.99, quote_side + slippage)  # F8: the executable fill
-        edge = p_side - fill                      # ≡ p_side − quote − slippage
+        fill = min(0.99, ask + slippage)  # executable ask + conservative buffer
+        edge = p_side - fill
         s["judge_p"] = f"{p_yes:.3f}"
         s["judge_conf"] = f"{conf:.2f}"
         s["edge"] = f"{edge:.3f}"
+        quote_side = ask  # recorded quote = the executable ask, not a midpoint
         rationale = str(j.get("rationale", ""))[:180]
 
         if edge >= th["min_edge"] and conf >= th["judge_min_conf"]:

@@ -104,17 +104,18 @@ def main():
         if s["side"] in ("YES", "NO"):
             newly_resolved.append(s)
 
-    # 3) fold with one credit per (leaker, market), earliest post wins (F2)
-    counted_pairs = {(x["leaker_id"], x["market_id"]) for x in signals
-                     if x.get("stat_counted") == "true"}
+    # 3) fold with one credit per (leaker, EVENT), earliest post wins (F2/F3)
+    counted_pairs = {(x["leaker_id"], x.get("event_id") or x["market_id"])
+                     for x in signals
+                     if x.get("stat_counted") == "true" or x["status"] == "historical"}
     n_scored = 0
     promotions = []
     newly_resolved.sort(key=lambda x: x.get("post_ts") or x["ts_detected"])
     for s in newly_resolved:
-        pair = (s["leaker_id"], s["market_id"])
+        pair = (s["leaker_id"], s.get("event_id") or s["market_id"])
         if pair in counted_pairs:
             s["stat_counted"] = "false"
-            s["note"] = (s.get("note", "") + " duplicate call on market — not scored (F2)").strip()
+            s["note"] = (s.get("note", "") + " duplicate call on event — not scored (F2)").strip()
             continue
         hit = (s["side"] == s["resolved_outcome"])
         try:
@@ -128,7 +129,7 @@ def main():
                 "n_calls": 0, "hits": 0, "notes": ""}
         row = ensure_leaker_row(leakers, base, s["call_class"])
         before = row.get("status")
-        update_leaker_stats(row, hit, price_side, th)
+        update_leaker_stats(row, hit, price_side, th, live=True)  # prospective fold
         s["stat_counted"] = "true" if price_side is not None else "false"
         counted_pairs.add(pair)
         if before != "verified" and row["status"] == "verified":

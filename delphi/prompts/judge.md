@@ -34,6 +34,9 @@ You will be given:
 - Do NOT default to the market price. If your estimate equals the price, your
   confidence should reflect that you add nothing.
 - Calibration over boldness: you are scored by Brier on every output, bet or not.
+- `p_yes` and `confidence` MUST be decimals in (0,1) / [0,1]. Out-of-range
+  values (e.g. percentages like 87) are REJECTED by the scripts, not clamped —
+  the signal is then discarded.
 - Output JSON only:
 
 ```json

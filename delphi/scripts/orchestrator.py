@@ -80,22 +80,38 @@ def _exp_dir():
     return d
 
 
-def _snapshot(exp_id: str, kind: str, rel: str | None) -> None:
-    """F7: store a restorable before-image for every experiment."""
+def _snapshot_file(exp_id: str, rel: str, new_content: str) -> None:
+    """Round-2 F6: before-image + after-image. Restore only applies when the
+    file still equals the after-image (a founder edit in between wins)."""
     d = _exp_dir()
-    if kind == "file":
-        target = ROOT / rel
-        before = target.read_text(encoding="utf-8") if target.exists() else ""
-        meta = {"kind": "file", "path": rel}
-    else:
-        before = (ROOT / "config.json").read_text(encoding="utf-8")
-        meta = {"kind": "config"}
+    target = ROOT / rel
+    before = target.read_text(encoding="utf-8") if target.exists() else ""
     (d / f"{exp_id}.before").write_text(before, encoding="utf-8")
-    (d / f"{exp_id}.json").write_text(json.dumps(meta), encoding="utf-8")
+    (d / f"{exp_id}.after").write_text(new_content, encoding="utf-8")
+    (d / f"{exp_id}.json").write_text(json.dumps({"kind": "file", "path": rel}),
+                                      encoding="utf-8")
+
+
+def _snapshot_config(exp_id: str, patch: dict) -> None:
+    """Round-2 F6: snapshot ONLY the patched allowlisted keys' prior values —
+    a revert goes back through config_patch, so it can never overwrite
+    founder-only keys changed in the meantime."""
+    cfg_now = load_config()
+    before = {}
+    for key in patch:
+        node = cfg_now
+        try:
+            for part in key.split("."):
+                node = node[part]
+            before[key] = node
+        except (KeyError, TypeError):
+            continue
+    (_exp_dir() / f"{exp_id}.json").write_text(
+        json.dumps({"kind": "config", "patch_before": before}), encoding="utf-8")
 
 
 def apply_amendment(cfg, amd: dict) -> str:
-    """Validate against the allowlists, snapshot a before-image, apply."""
+    """Validate against the allowlists, snapshot restorable state, apply."""
     oc = cfg["orchestrator"]
     kind = amd.get("kind")
     exp_id = re.sub(r"[^A-Za-z0-9_-]", "", str(amd.get("id") or f"exp-{time.strftime('%Y%m%d-%H%M')}"))
@@ -106,15 +122,15 @@ def apply_amendment(cfg, amd: dict) -> str:
         content = str(amd.get("content", ""))
         if not content.strip():
             return "REJECTED file amendment: empty content"
-        _snapshot(exp_id, "file", rel)
+        _snapshot_file(exp_id, rel, content)
         (ROOT / rel).write_text(content, encoding="utf-8")
         outcome = f"wrote {rel}"
     elif kind == "config":
         patch = dict(amd.get("patch") or {})
-        _snapshot(exp_id, "config", None)
         ok, msg = config_patch(patch)  # exact allowlist + type/range validation (F7)
         if not ok:
             return f"REJECTED config amendment: {msg}"
+        _snapshot_config(exp_id, patch)
         outcome = f"config {msg}"
     else:
         return f"REJECTED amendment: unknown kind {kind!r}"
@@ -128,28 +144,44 @@ def apply_amendment(cfg, amd: dict) -> str:
 
 
 def _restore(exp_id: str) -> str:
-    """F7: a revert actually restores the before-image, not just table text."""
+    """Round-2 F6: reverts are real AND safe — file restores require the
+    current content to still equal the experiment's after-image; config
+    restores replay the saved key/values THROUGH config_patch's allowlist."""
     d = _exp_dir()
-    meta_p, before_p = d / f"{exp_id}.json", d / f"{exp_id}.before"
-    if not meta_p.exists() or not before_p.exists():
-        return f"{exp_id}: no before-image found — cannot restore"
+    meta_p = d / f"{exp_id}.json"
+    if not meta_p.exists():
+        return f"{exp_id}: no snapshot found — cannot restore"
     meta = json.loads(meta_p.read_text(encoding="utf-8"))
-    before = before_p.read_text(encoding="utf-8")
     if meta["kind"] == "file":
-        (ROOT / meta["path"]).write_text(before, encoding="utf-8")
+        before_p, after_p = d / f"{exp_id}.before", d / f"{exp_id}.after"
+        if not before_p.exists():
+            return f"{exp_id}: no before-image — cannot restore"
+        target = ROOT / meta["path"]
+        current = target.read_text(encoding="utf-8") if target.exists() else ""
+        if after_p.exists() and current != after_p.read_text(encoding="utf-8"):
+            return f"{exp_id}: {meta['path']} changed since experiment — restore SKIPPED"
+        target.write_text(before_p.read_text(encoding="utf-8"), encoding="utf-8")
         return f"{exp_id}: restored {meta['path']}"
-    (ROOT / "config.json").write_text(before, encoding="utf-8")
-    return f"{exp_id}: restored config.json"
+    patch_before = meta.get("patch_before") or {}
+    if not patch_before:
+        return f"{exp_id}: empty config snapshot — nothing restored"
+    ok, msg = config_patch(patch_before)  # through the allowlist, never around it
+    return f"{exp_id}: config restore {'ok' if ok else 'REJECTED'} ({msg})"
 
 
 def review_experiments(reviews: list) -> list[str]:
     notes = []
     exp_path = agent_dir("orchestrator") / "EXPERIMENTS.md"
     text = exp_path.read_text(encoding="utf-8") if exp_path.exists() else ""
+    live_ids = {line.split("|")[1].strip() for line in text.splitlines()
+                if line.startswith("| ") and "| live |" in line}
     for rv in reviews or []:
         eid = re.sub(r"[^A-Za-z0-9_-]", "", str(rv.get("id", "")))
         verdict = str(rv.get("verdict", ""))
         if not eid or verdict not in ("keep", "revert"):
+            continue
+        if eid not in live_ids:  # round-2 F6: only LIVE experiments reviewable
+            notes.append(f"{eid}:ignored-not-live")
             continue
         restore_msg = ""
         if verdict == "revert":
