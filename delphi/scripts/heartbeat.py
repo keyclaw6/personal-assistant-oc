@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Heartbeat (every 10 min): sweep the roster (verified + probation) for new
 posts, extract claims, match to OPEN Polymarket markets, log signal rows with
-the price at detection (PROGRAM §0.5). Probation signals are tracked, never
-bet. Judge runs separately on `pending_judge` rows.
+the price at detection. Probation signals are tracked, never bet.
+
+Review fixes baked in:
+- F5: the leaker's existing call classes are injected into the prompt and all
+  classes are normalized against the frozen taxonomy before the verified gate.
+- F6: the per-leaker cursor advances ONLY when extraction parsed and no
+  transient failure occurred; API failures produce no permanent no_market rows.
 """
 from __future__ import annotations
 
@@ -12,10 +17,12 @@ import time
 import cognee
 import polymarket as pm
 from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
-                 gen_id, iso_to_unix, load_config, log_result, now_iso,
-                 read_tsv, unix_to_iso, write_note, write_tsv)
+                 gen_id, iso_to_unix, load_config, log_result, normalize_class,
+                 now_iso, read_tsv, unix_to_iso, write_note, write_tsv)
 from llm import call_json
 from sources import fetch_posts
+
+MAX_CLAIMS_PER_LEAKER = 12
 
 
 def sweep_roster(leakers: list[dict]) -> list[dict]:
@@ -29,6 +36,11 @@ def sweep_roster(leakers: list[dict]) -> list[dict]:
         seen.add(key)
         out.append(r)
     return out
+
+
+def leaker_classes(leakers: list[dict], leaker_id: str) -> list[str]:
+    return sorted({r["call_class"] for r in leakers
+                   if r["leaker_id"] == leaker_id and r["call_class"] != "-"})
 
 
 def is_verified(leakers: list[dict], leaker_id: str, call_class: str) -> bool:
@@ -49,6 +61,7 @@ def main():
     args = ap.parse_args()
     cfg = load_config()
     th = cfg["thresholds"]
+    taxonomy = (cfg.get("call_classes") or {}).get(args.domain) or []
     ddir = domain_dir(args.domain)
     brief = (ddir / "domain.md").read_text(encoding="utf-8")
     ctx = agent_context("heartbeat", max_notes=0)  # AGENT.md + MEMORY.md only — speed
@@ -64,7 +77,7 @@ def main():
                        "roster empty (no verified/probation leakers) — run explorer.py")
         return
 
-    n_posts = n_claims = n_pending = n_tracked = n_nomarket = 0
+    n_posts = n_claims = n_pending = n_tracked = n_nomarket = n_deferred = 0
     lessons_all: list[str] = []
     events: list[str] = []
     for lk in roster:
@@ -81,29 +94,42 @@ def main():
         if not posts:
             continue
         n_posts += len(posts)
+        transient_failure = False  # F6: any retryable failure → cursor stays
 
         post_block = "\n".join(f"- [{p['ts']}] {p['url']}\n  {p['text'][:500]}" for p in posts)
         prompt = (ctx + "\n\n" + prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
+                  + "\n\n## FIXED CALL-CLASS TAXONOMY (use ONLY these)\n"
+                  + ", ".join(taxonomy)
                   + f"\n\n## LEAKER\n{lk['platform']}/{lk['handle']}"
+                  + "\n\n## THIS LEAKER'S EXISTING CALL CLASSES\n"
+                  + (", ".join(leaker_classes(leakers, lk["leaker_id"])) or "none yet")
                   + "\n\n## NEW POSTS\n" + post_block
                   + "\n\n## REQUEST\nExtract claims now. JSON only.")
-        j = call_json("heartbeat", prompt, cfg) or {}
+        j = call_json("heartbeat", prompt, cfg)
+        if j is None:  # F6: parse failure — retry whole batch next sweep
+            print(f"  [heartbeat] extraction unparseable for {lk['handle']} — will retry")
+            continue
         lessons_all += j.get("lessons") or []
-        claims = j.get("claims", [])[:5]
+        claims = j.get("claims", [])[:MAX_CLAIMS_PER_LEAKER]
         n_claims += len(claims)
 
         for c in claims:
+            cls = normalize_class(c.get("call_class", ""), cfg, args.domain)
             sig = {
                 "signal_id": gen_id("sig"), "ts_detected": now_iso(),
                 "domain": args.domain, "leaker_id": lk["leaker_id"],
                 "platform": lk["platform"], "post_url": c.get("post_url", ""),
                 "post_ts": c.get("post_ts", ""), "claim": c.get("claim", ""),
-                "call_class": c.get("call_class", "unclassified"),
+                "call_class": cls,
                 "hedged": str(bool(c.get("hedged", False))).lower(),
-                "resolved_outcome": "", "note": "",
+                "resolved_outcome": "", "stat_counted": "", "note": "",
             }
             markets = pm.search_markets(str(c.get("market_query", ""))[:80],
                                         closed=False, limit=5)
+            if markets is None:  # F6: transient API failure — no row, retry later
+                transient_failure = True
+                n_deferred += 1
+                continue
             chosen, side = None, ""
             if markets:
                 mk_block = "\n".join(
@@ -113,7 +139,11 @@ def main():
                                ctx + "\n\n" + prompt_t + "\n\n## CLAIMS\n- [0] " + sig["claim"]
                                + "\n\n## CANDIDATE (claim, market) PAIRS\n" + mk_block
                                + "\n\n## REQUEST\nPerform market mapping now. JSON only.",
-                               cfg) or {}
+                               cfg)
+                if mp is None:  # F6: mapping parse failure — retry later
+                    transient_failure = True
+                    n_deferred += 1
+                    continue
                 for m_ in mp.get("mappings", []):
                     if m_.get("match") and str(m_.get("implied_side", "")).upper() in ("YES", "NO"):
                         chosen = next((mm for mm in markets
@@ -122,48 +152,50 @@ def main():
                         break
             if not chosen:
                 sig.update({"status": "no_market",
-                            "note": f"top candidate: {markets[0]['question'][:80]}" if markets else ""})
+                            "note": f"top candidate: {markets[0]['question'][:80]}" if markets else "no candidates"})
                 n_nomarket += 1
             else:
                 price_yes = pm.midpoint(chosen["yes_token"])
                 if price_yes is None:
                     price_yes = chosen["yes_price"]
-                if price_yes is None:
-                    sig.update({"status": "no_market", "note": "no price available — skipped (§7)"})
-                    n_nomarket += 1
+                if price_yes is None:  # F6: transient — no permanent row
+                    transient_failure = True
+                    n_deferred += 1
+                    continue
+                verified = is_verified(leakers, lk["leaker_id"], cls)
+                liq_ok = chosen["liquidity"] >= th["min_liquidity_usd"]
+                sig.update({
+                    "market_id": chosen["id"], "market_question": chosen["question"],
+                    "token_id": chosen["yes_token"], "side": side,
+                    "price_at_signal": f"{price_yes:.3f}",
+                    "liquidity_usd": f"{chosen['liquidity']:.0f}",
+                    "status": "pending_judge" if (verified and liq_ok) else "tracked_probation",
+                    "note": "" if liq_ok else "below min liquidity",
+                })
+                if sig["status"] == "pending_judge":
+                    n_pending += 1
                 else:
-                    verified = is_verified(leakers, lk["leaker_id"], sig["call_class"])
-                    liq_ok = chosen["liquidity"] >= th["min_liquidity_usd"]
-                    sig.update({
-                        "market_id": chosen["id"], "market_question": chosen["question"],
-                        "token_id": chosen["yes_token"], "side": side,
-                        "price_at_signal": f"{price_yes:.3f}",
-                        "liquidity_usd": f"{chosen['liquidity']:.0f}",
-                        "status": "pending_judge" if (verified and liq_ok) else "tracked_probation",
-                        "note": "" if liq_ok else "below min liquidity",
-                    })
-                    if sig["status"] == "pending_judge":
-                        n_pending += 1
-                    else:
-                        n_tracked += 1
+                    n_tracked += 1
             append_tsv(ddir / "signals.tsv", sig)
             known_posts.add(sig["post_url"])
             events.append(f"{lk['handle']}: {sig['claim'][:90]} → {sig['status']}")
 
-        newest = max(p["ts"] for p in posts)
-        for r in leakers:
-            if r["leaker_id"] == lk["leaker_id"] and newest > (r.get("last_seen_ts") or ""):
-                r["last_seen_ts"] = newest
+        if not transient_failure:  # F6: advance cursor only on a clean batch
+            newest = max(p["ts"] for p in posts)
+            for r in leakers:
+                if r["leaker_id"] == lk["leaker_id"] and newest > (r.get("last_seen_ts") or ""):
+                    r["last_seen_ts"] = newest
 
     write_tsv(ddir / "leakers.tsv", leakers)
     append_lessons("heartbeat", lessons_all)
-    if events:  # note only when something happened — 144 runs/day otherwise
+    if events:
         note = "Signals this sweep:\n- " + "\n- ".join(events)
         write_note("heartbeat", "signals", note)
         cognee.add(note, meta=f"heartbeat {args.domain}")
     log_result("heartbeat", args.domain,
                f"swept {len(roster)} leakers, {n_posts} new posts, {n_claims} claims → "
-               f"{n_pending} pending_judge, {n_tracked} probation-tracked, {n_nomarket} no_market")
+               f"{n_pending} pending_judge, {n_tracked} probation-tracked, "
+               f"{n_nomarket} no_market, {n_deferred} deferred-transient")
 
 
 if __name__ == "__main__":

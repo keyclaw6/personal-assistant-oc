@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import csv
 import json
+import math
+import os
 import re
 import time
 import uuid
@@ -88,12 +90,16 @@ def append_tsv(path: Path, row: dict) -> None:
 
 
 def write_tsv(path: Path, rows: list[dict]) -> None:
-    """Full rewrite preserving the file's existing header order."""
+    """Full rewrite, ATOMIC (tmp + os.replace) so a concurrent reader never sees
+    a torn file and a crash never leaves a truncated one (F4)."""
+    path = Path(path)
     cols = tsv_columns(path)
-    with open(path, "w", newline="", encoding="utf-8") as f:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
         f.write("\t".join(cols) + "\n")
         for row in rows:
             f.write("\t".join(_clean(row.get(c, "")) for c in cols) + "\n")
+    os.replace(tmp, path)
 
 
 def log_result(script: str, domain: str, summary: str) -> None:
@@ -154,35 +160,55 @@ def position_size(p_side: float, price_side: float, bankroll: float, th: dict) -
 
 # ---------- leaker stats (deterministic accounting) ----------
 
-def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None, th: dict) -> dict:
-    """Incrementally fold one resolved call into a (leaker, call_class) row.
+def wilson_lower(hits: int, n: int, z: float = 1.2816) -> float:
+    """One-sided Wilson lower confidence bound on a binomial proportion.
+    Default z=1.2816 ≈ 90% one-sided. Guards the verification gate against
+    small-sample luck (F3: a 6/10 coin-flipper must not verify)."""
+    if n <= 0:
+        return 0.0
+    ph = hits / n
+    denom = 1.0 + z * z / n
+    center = ph + z * z / (2 * n)
+    rad = z * math.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n))
+    return max(0.0, (center - rad) / denom)
 
-    Unpriced calls use the conservative fallback from PROGRAM.md §2:
-    hits assume a late-consensus price of 0.85, misses assume 0.50 — never
-    flattering the leaker.
+
+def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None, th: dict) -> dict:
+    """Fold one resolved call into a (leaker, call_class) row.
+
+    F1: ONLY calls with a genuine observed price at-or-before post time count
+    toward verification. Unpriced calls are audit-only: they increment
+    n_unpriced and never move the gate.
+    F3: the gate uses the Wilson lower bound, not the point estimate:
+        edge_lcb = wilson_lower(hits, n) − avg_price_at_call ≥ verify_min_edge
+    Status is recomputed on every fold, so live results can also DEMOTE a
+    verified leaker back to probation.
     """
+    if price_at_call is None:
+        row["n_unpriced"] = int(row.get("n_unpriced") or 0) + 1
+        return row
     n = int(row.get("n_calls") or 0)
     hits = int(row.get("hits") or 0)
     avg_p = float(row.get("avg_price_at_call") or 0.0)
-    if price_at_call is None:
-        price_at_call = 0.85 if hit else 0.50
     n2 = n + 1
     hits2 = hits + (1 if hit else 0)
     avg_p2 = (avg_p * n + price_at_call) / n2
     hit_rate = hits2 / n2
-    est_edge = hit_rate - avg_p2
+    lcb = wilson_lower(hits2, n2, float(th.get("verify_z", 1.2816)))
+    edge_lcb = lcb - avg_p2
     row.update({
         "n_calls": n2, "hits": hits2,
         "hit_rate": f"{hit_rate:.3f}",
         "avg_price_at_call": f"{avg_p2:.3f}",
-        "est_edge": f"{est_edge:.3f}",
+        "est_edge": f"{hit_rate - avg_p2:.3f}",
+        "edge_lcb": f"{edge_lcb:.3f}",
     })
     prior = row.get("status", "candidate")
     if prior != "retired":
-        if n2 >= th["verify_min_calls"] and est_edge >= th["verify_min_edge"]:
+        if n2 >= th["verify_min_calls"] and edge_lcb >= th["verify_min_edge"]:
             row["status"] = "verified"
         elif n2 >= th["verify_min_calls"]:
-            row["status"] = "probation"  # enough calls, not enough edge — track, never bet
+            row["status"] = "probation"  # enough calls, not enough proven edge
         elif n2 >= 3:
             row["status"] = "probation"
     return row
@@ -261,26 +287,65 @@ def append_lessons(name: str, lessons) -> int:
 
 
 # ---------- guarded config patch (orchestrator authority, PROGRAM.md §6) ----------
+#
+# F7: an exact ALLOWLIST with type/range validation, not a denylist. Everything
+# else — thresholds/gates, sizing, roles, bankroll, isolation, this spec — is
+# founder-only. The spec lives in code, which no agent can edit.
 
-def config_patch(patch: dict, blocked: list[str]) -> tuple[bool, str]:
-    """Apply {dotted.key: value} onto config.json. Only EXISTING keys; top-level
-    blocked keys rejected. Returns (ok, message)."""
+CONFIG_PATCH_ALLOWED: dict[str, tuple[str, tuple | None]] = {
+    "kickstart.active_until":                    ("str",  None),
+    "kickstart.explorer_max_candidates_per_run": ("int",  (1, 12)),
+    "sources.explorer_max_candidates_per_run":   ("int",  (1, 8)),
+    "sources.history_days":                      ("int",  (30, 365)),
+    "sources.history_max_posts":                 ("int",  (20, 200)),
+    "sources.x_backend":                         ("enum", ("exa", "x_api")),
+    "cognee.enabled":                            ("bool", None),
+    "cognee.search_type":                        ("enum", ("CHUNKS", "RAG_COMPLETION", "GRAPH_COMPLETION")),
+    "llm.max_json_retries":                      ("int",  (0, 2)),
+}
+
+
+def _valid_value(val, kind: str, bound) -> bool:
+    if kind == "str":
+        return isinstance(val, str) and 0 < len(val) < 200
+    if kind == "int":
+        return isinstance(val, int) and not isinstance(val, bool) \
+            and bound[0] <= val <= bound[1]
+    if kind == "bool":
+        return isinstance(val, bool)
+    if kind == "enum":
+        return val in bound
+    return False
+
+
+def config_patch(patch: dict) -> tuple[bool, str]:
+    """Apply {dotted.key: value} onto config.json — allowlisted keys only,
+    type/range validated, atomic write. Returns (ok, message)."""
+    for key, val in patch.items():
+        spec = CONFIG_PATCH_ALLOWED.get(key)
+        if spec is None:
+            return False, f"key not in allowlist: {key}"
+        if not _valid_value(val, spec[0], spec[1]):
+            return False, f"invalid value for {key}: {val!r}"
     cfg = load_config()
-    for key in patch:
-        if key.split(".")[0] in blocked:
-            return False, f"blocked key: {key}"
     for key, val in patch.items():
         node = cfg
         parts = key.split(".")
         for part in parts[:-1]:
-            if not isinstance(node, dict) or part not in node:
-                return False, f"unknown path: {key}"
             node = node[part]
-        if not isinstance(node, dict) or parts[-1] not in node:
-            return False, f"unknown key: {key}"
         node[parts[-1]] = val
-    (ROOT / "config.json").write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    tmp = ROOT / "config.json.tmp"
+    tmp.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, ROOT / "config.json")
     return True, f"patched {', '.join(patch)}"
+
+
+def normalize_class(call_class: str, cfg: dict, domain: str) -> str:
+    """Freeze the call-class taxonomy (F3/F5): anything outside the fixed
+    per-domain list maps to 'unclassified'."""
+    allowed = (cfg.get("call_classes") or {}).get(domain) or []
+    c = str(call_class or "").strip().lower()
+    return c if c in allowed else "unclassified"
 
 
 def kickstart_active(cfg: dict) -> bool:

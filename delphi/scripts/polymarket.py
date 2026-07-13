@@ -40,6 +40,7 @@ def norm_market(m: dict) -> dict:
         if o.strip().lower() == "yes":
             yes_i = i
             break
+    no_i = 1 - yes_i if len(tokens) > 1 else None
     return {
         "id": str(m.get("id", "")),
         "question": m.get("question", "") or m.get("title", ""),
@@ -50,6 +51,7 @@ def norm_market(m: dict) -> dict:
         "volume": float(m.get("volumeNum") or m.get("volume") or 0),
         "yes_price": prices[yes_i] if len(prices) > yes_i else None,
         "yes_token": tokens[yes_i] if len(tokens) > yes_i else "",
+        "no_token": tokens[no_i] if no_i is not None and len(tokens) > no_i else "",
         "outcomes": outcomes,
     }
 
@@ -60,9 +62,14 @@ def _keyword_score(query: str, question: str) -> int:
     return sum(1 for w in q_tokens if w in text)
 
 
-def search_markets(query: str, closed: bool, limit: int = 8) -> list[dict]:
-    """Search Gamma. Tries /public-search first, falls back to listing+filtering."""
+def search_markets(query: str, closed: bool, limit: int = 8) -> list[dict] | None:
+    """Search Gamma. Tries /public-search first, falls back to listing+filtering.
+
+    Returns None on API FAILURE (transient — callers must treat as retryable,
+    F6) vs [] for a genuine no-match (permanent no_market is then honest).
+    """
     results: list[dict] = []
+    failed = 0
     try:
         url = f"{GAMMA}/public-search?q={urllib.parse.quote(query)}&limit_per_type=20"
         data = _get_json(url)
@@ -70,6 +77,7 @@ def search_markets(query: str, closed: bool, limit: int = 8) -> list[dict]:
             for m in (ev.get("markets") or []):
                 results.append(norm_market(m))
     except Exception as e:  # noqa: BLE001
+        failed += 1
         print(f"  [polymarket] public-search failed ({e}); falling back to /markets")
     if not results:
         try:
@@ -78,8 +86,10 @@ def search_markets(query: str, closed: bool, limit: int = 8) -> list[dict]:
             for m in _get_json(url):
                 results.append(norm_market(m))
         except Exception as e:  # noqa: BLE001
+            failed += 1
             print(f"  [polymarket] /markets failed: {e}")
-            return []
+    if not results and failed == 2:
+        return None  # both endpoints down — transient, retry later
     results = [r for r in results if r["closed"] == closed]
     scored = [(_keyword_score(query, r["question"]), r) for r in results]
     scored = [x for x in scored if x[0] > 0]
@@ -107,24 +117,29 @@ def midpoint(token_id: str) -> float | None:
         return None
 
 
-def price_at(token_id: str, unix_ts: int, window_days: int = 4) -> float | None:
-    """Historical YES-token price nearest to (and preferably before) unix_ts."""
-    if not token_id:
+def price_at(token_id: str, unix_ts: int, max_stale_hours: int = 48) -> float | None:
+    """YES-token price observed AT OR BEFORE unix_ts, no staler than
+    max_stale_hours. Returns None otherwise.
+
+    F1: never returns a post-event observation (look-ahead — the leak may
+    already have repriced the market) and never an arbitrarily stale one
+    (the market must demonstrably have been trading near post time).
+    """
+    if not token_id or not unix_ts:
         return None
-    day = 86400
+    start = unix_ts - max_stale_hours * 3600
     url = (f"{CLOB}/prices-history?market={urllib.parse.quote(token_id)}"
-           f"&startTs={unix_ts - window_days * day}&endTs={unix_ts + day}&fidelity=60")
+           f"&startTs={start}&endTs={unix_ts}&fidelity=60")
     try:
         hist = (_get_json(url) or {}).get("history") or []
     except Exception as e:  # noqa: BLE001
         print(f"  [polymarket] prices-history {token_id[:16]}…: {e}")
         return None
-    if not hist:
+    before = [h for h in hist if start <= h.get("t", 0) <= unix_ts]
+    if not before:
         return None
-    before = [h for h in hist if h.get("t", 0) <= unix_ts]
-    pick = before[-1] if before else hist[0]
     try:
-        return float(pick["p"])
+        return float(before[-1]["p"])
     except (KeyError, TypeError, ValueError):
         return None
 

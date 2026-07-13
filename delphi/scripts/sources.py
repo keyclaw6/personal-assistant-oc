@@ -38,16 +38,34 @@ def _warn(msg: str):
 
 # ---------- Reddit ----------
 
-def reddit_user_posts(handle: str, limit: int = 50, cfg: dict | None = None) -> list[dict]:
+def reddit_user_posts(handle: str, limit: int = 50, cfg: dict | None = None,
+                      start_iso: str | None = None) -> list[dict]:
+    """Paginates with the `after` cursor until `limit` posts or `start_iso`
+    is passed (F3: actually cover the configured history window, not just the
+    newest page)."""
     cfg = cfg or load_config()
     ua = cfg["sources"]["reddit_user_agent"]
-    url = f"https://www.reddit.com/user/{urllib.parse.quote(handle)}/submitted.json?limit={limit}&raw_json=1"
-    try:
-        data = _get_json(url, {"User-Agent": ua})
-    except Exception as e:  # noqa: BLE001 — deliberate boundary
-        _warn(f"reddit user {handle}: {e}")
-        return []
-    return _reddit_children(data)
+    posts: list[dict] = []
+    after = ""
+    for _ in range(8):  # hard page cap
+        url = (f"https://www.reddit.com/user/{urllib.parse.quote(handle)}/submitted.json"
+               f"?limit=100&raw_json=1" + (f"&after={after}" if after else ""))
+        try:
+            data = _get_json(url, {"User-Agent": ua})
+        except Exception as e:  # noqa: BLE001 — deliberate boundary
+            _warn(f"reddit user {handle}: {e}")
+            break
+        page = _reddit_children(data)
+        posts += page
+        after = (data or {}).get("data", {}).get("after") or ""
+        if not page or not after or len(posts) >= limit:
+            break
+        if start_iso and page[-1]["ts"] and page[-1]["ts"] < start_iso:
+            break
+    if start_iso:
+        posts = [p for p in posts if p["ts"] >= start_iso]
+    posts.sort(key=lambda p: p["ts"], reverse=True)
+    return posts[:limit]
 
 
 def reddit_sub_new(sub: str, limit: int = 25, cfg: dict | None = None) -> list[dict]:
@@ -79,31 +97,34 @@ def _reddit_children(data) -> list[dict]:
 # ---------- X / Twitter ----------
 
 def x_posts(handle: str, since_iso: str | None = None, limit: int = 25,
-            cfg: dict | None = None) -> list[dict]:
+            cfg: dict | None = None, end_iso: str | None = None) -> list[dict]:
     cfg = cfg or load_config()
     backend = cfg["sources"].get("x_backend", "exa")
     if backend == "x_api" and os.environ.get(cfg["sources"]["x_bearer_env"]):
         return _x_api(handle, since_iso, limit, cfg)
     if os.environ.get(cfg["sources"]["exa_api_key_env"]):
-        return _x_exa(handle, since_iso, limit, cfg)
+        return _x_exa(handle, since_iso, limit, cfg, end_iso)
     if os.environ.get(cfg["sources"]["x_bearer_env"]):
         return _x_api(handle, since_iso, limit, cfg)
     _warn(f"x/{handle}: no EXA_API_KEY or X_BEARER_TOKEN set — X coverage disabled")
     return []
 
 
-def _x_exa(handle: str, since_iso: str | None, limit: int, cfg: dict) -> list[dict]:
+def _x_exa(handle: str, since_iso: str | None, limit: int, cfg: dict,
+           end_iso: str | None = None) -> list[dict]:
     key = os.environ[cfg["sources"]["exa_api_key_env"]]
     body = {
         "query": f"from:{handle}",
         "category": "tweet",
-        "numResults": min(limit, 100),
+        "numResults": min(max(limit, 10), 100),
         "includeDomains": ["x.com", "twitter.com"],
         "contents": {"text": True},
         "livecrawl": "always",
     }
     if since_iso:
         body["startPublishedDate"] = since_iso
+    if end_iso:
+        body["endPublishedDate"] = end_iso  # older-window slices for deepen mode
     try:
         data = _post_json("https://api.exa.ai/search", body, {"x-api-key": key})
     except Exception as e:  # noqa: BLE001
@@ -147,13 +168,16 @@ def _x_api(handle: str, since_iso: str | None, limit: int, cfg: dict) -> list[di
 # ---------- dispatch ----------
 
 def fetch_posts(platform: str, handle: str, since_iso: str | None = None,
-                limit: int = 25, cfg: dict | None = None) -> list[dict]:
+                limit: int = 25, cfg: dict | None = None,
+                end_iso: str | None = None) -> list[dict]:
+    """Normalized posts newest-first. since_iso/end_iso bound the window
+    (end_iso enables the explorer's deepen mode to fetch OLDER slices)."""
     if platform == "reddit":
-        posts = reddit_user_posts(handle, limit, cfg)
-        if since_iso:
-            posts = [p for p in posts if p["ts"] > since_iso]
+        posts = reddit_user_posts(handle, limit, cfg, start_iso=since_iso)
+        if end_iso:
+            posts = [p for p in posts if p["ts"] <= end_iso]
         return posts
     if platform == "x":
-        return x_posts(handle, since_iso, limit, cfg)
+        return x_posts(handle, since_iso, limit, cfg, end_iso)
     _warn(f"unknown platform {platform}")
     return []

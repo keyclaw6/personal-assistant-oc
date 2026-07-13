@@ -31,9 +31,10 @@ event. For each claim:
 
 - `claim`: one sentence, self-contained (include the subject by name)
 - `post_ts`, `post_url`: from the post
-- `call_class`: short slug grouping similar call types, reused consistently
-  (examples for AI domain: `release-timing`, `model-existence`, `feature-sighting`,
-  `benchmark-position`, `org-event`)
+- `call_class`: MUST be one of the domain's fixed taxonomy — for ai-releases:
+  `release-timing`, `model-existence`, `feature-sighting`, `benchmark-position`,
+  `org-event` — or `unclassified` if none fits. Never invent new class names;
+  anything else is normalized to `unclassified` by the scripts.
 - `checkable`: true only if the outcome is now publicly known either way
 - `market_query`: 2–5 keywords likely to find a matching Polymarket market
 
@@ -55,6 +56,10 @@ resolves the claim, and if so which side the claim implies.
 - `match`: true only if the market's resolution criteria would settle the claim.
   A related-but-different question is NOT a match (e.g. claim: "GPT-6 in March";
   market: "GPT-6 best on LMArena by June" — related, not a match).
+- **At most ONE market per claim.** If several contracts overlap the same claim
+  (e.g. "by Aug 7" and "by Aug 10" variants), return match:true only for the
+  single market whose criteria most directly settle the claim, and match:false
+  for the rest — one prediction must never be scored twice.
 - `implied_side`: "YES" or "NO" — the side the leaker's claim supports.
 
 Output JSON only:

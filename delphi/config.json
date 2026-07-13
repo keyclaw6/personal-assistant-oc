@@ -7,6 +7,7 @@
     "judge_min_conf": 0.6,
     "verify_min_calls": 10,
     "verify_min_edge": 0.05,
+    "verify_z": 1.2816,
     "kelly_fraction": 0.25,
     "max_stake_frac": 0.05,
     "min_liquidity_usd": 1000
@@ -20,6 +21,16 @@
   "kickstart": {
     "active_until": "2026-07-18T00:00:00Z",
     "explorer_max_candidates_per_run": 8
+  },
+  "call_classes": {
+    "ai-releases": [
+      "release-timing",
+      "model-existence",
+      "feature-sighting",
+      "benchmark-position",
+      "org-event",
+      "unclassified"
+    ]
   },
   "roles": {
     "explorer": {
@@ -86,13 +97,7 @@
   },
   "orchestrator": {
     "max_amendments_per_run": 1,
-    "editable_files_regex": "^(prompts/[a-z]+\\.md|agents/[a-z]+/(AGENT|MEMORY)\\.md|domains/[a-z0-9-]+/domain\\.md)$",
-    "config_blocked_keys": [
-      "paper_only",
-      "roles",
-      "codex_cmd",
-      "bankroll_usd",
-      "orchestrator"
-    ]
+    "editable_files_regex": "^(prompts/(explorer|heartbeat|judge)\\.md|agents/(explorer|heartbeat|judge)/(AGENT|MEMORY)\\.md|agents/orchestrator/MEMORY\\.md|domains/[a-z0-9-]+/domain\\.md)$",
+    "config_patch_note": "authoritative config-patch allowlist with type/range validation lives in scripts/lib.py CONFIG_PATCH_ALLOWED \u2014 code is founder-only and no agent can edit it"
   }
 }

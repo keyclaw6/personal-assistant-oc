@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
 """Explorer: discover candidate leakers and qualify them against HISTORICAL
 resolved Polymarket markets (would following them have beaten the price at
-post time?). Seeds first; deepens thin probation leakers when the queue is
-empty; every scored historical call becomes a `historical` signal row (the
-FP/FN audit trail) and is never re-scored. Kickstart mode raises throughput.
-LLM does extraction/matching; all stats math is deterministic (PROGRAM §0).
+post time?).
+
+Review fixes baked in:
+- F1: only genuinely priced-at-post-time calls count toward verification;
+  unpriced calls become audit rows (stat_counted=false) and n_unpriced.
+- F2: at most ONE market per claim, at most one credit per (leaker, market)
+  pair ever — repeated posts and overlapping contracts cannot double-count.
+- F3: date-bounded, paginated history windows; frozen call-class taxonomy.
+- F5: deepen ANY partially-scored, non-verified, non-retired leaker.
 """
 from __future__ import annotations
 
 import argparse
+import re
 
 import cognee
 import polymarket as pm
 from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
                  ensure_leaker_row, gen_id, iso_to_unix, kickstart_active,
-                 leaker_row, load_config, log_result, now_iso, read_tsv,
-                 update_leaker_stats, write_note, write_tsv)
+                 leaker_row, load_config, log_result, normalize_class, now_iso,
+                 read_tsv, unix_to_iso, update_leaker_stats, write_note,
+                 write_tsv)
 from llm import call_json
 from sources import fetch_posts, reddit_sub_new
-
-import re
 
 
 def sweep_subs(brief: str) -> list[str]:
@@ -59,8 +64,9 @@ def propose_candidates(cfg, ctx, domain, brief, leakers, candidates) -> int:
     return added
 
 
-def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -> str:
-    """Qualify one candidate/leaker from history. Returns a short summary."""
+def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
+            posts_limit, start_iso, end_iso=None) -> str:
+    """Qualify one candidate/leaker from one history window."""
     th = cfg["thresholds"]
     ddir = domain_dir(domain)
     platform, handle = cand["platform"], cand["handle"]
@@ -71,13 +77,14 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -
     if not leaker_row(leakers, leaker_id, "-"):
         row = {c: "" for c in ("leaker_id platform handle domain call_class status "
                                "n_calls hits hit_rate avg_price_at_call est_edge "
-                               "last_seen_ts notes").split()}
+                               "edge_lcb n_unpriced last_seen_ts notes").split()}
         row.update(base)
         leakers.append(row)
 
-    posts = fetch_posts(platform, handle, limit=posts_limit, cfg=cfg)
+    posts = fetch_posts(platform, handle, since_iso=start_iso,
+                        limit=posts_limit, cfg=cfg, end_iso=end_iso)
     if not posts:
-        return f"{handle}: no history fetched"
+        return f"{handle}: no history fetched in window"
 
     prompt_t = (ROOT / "prompts" / "explorer.md").read_text(encoding="utf-8")
     post_block = "\n".join(f"- [{p['ts']}] {p['url']}\n  {p['text'][:400]}" for p in posts)
@@ -87,17 +94,22 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -
               + "\n\n## REQUEST\nPerform Task B now. JSON only.")
     j = call_json("explorer", prompt, cfg) or {}
     append_lessons("explorer", j.get("lessons"))
-    claims = [c for c in j.get("claims", []) if c.get("checkable")][:20]
+    claims = [c for c in j.get("claims", []) if c.get("checkable")][:30]
     if not claims:
         return f"{handle}: 0 checkable claims in {len(posts)} posts"
 
-    pairs, market_by_id = [], {}
+    pairs, market_by_id, search_failed = [], {}, 0
     for i, c in enumerate(claims):
-        for m in pm.search_markets(str(c.get("market_query", ""))[:80], closed=True, limit=3):
+        found = pm.search_markets(str(c.get("market_query", ""))[:80], closed=True, limit=3)
+        if found is None:  # transient API failure — this claim stays retryable (F6)
+            search_failed += 1
+            continue
+        for m in found:
             market_by_id[m["id"]] = m
             pairs.append((i, m))
     if not pairs:
-        return f"{handle}: {len(claims)} claims, 0 resolved-market candidates"
+        return (f"{handle}: {len(claims)} claims, 0 resolved-market candidates"
+                + (f" ({search_failed} searches failed transiently)" if search_failed else ""))
 
     map_block = "\n".join(
         f"- claim_index {i} | market_id {m['id']} | {m['question']} | criteria: {m['description'][:200]}"
@@ -108,20 +120,29 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -
               + "\n\n## REQUEST\nPerform Task C now. JSON only.")
     j = call_json("explorer", prompt, cfg) or {}
 
-    scored = verified = skipped_dupe = 0
+    # F2: keep only the FIRST match per claim — one market per claim.
+    best_by_claim: dict[int, dict] = {}
     for mp in j.get("mappings", []):
         if not mp.get("match"):
             continue
         try:
-            claim = claims[int(mp["claim_index"])]
-        except (KeyError, ValueError, IndexError):
+            ci = int(mp["claim_index"])
+        except (KeyError, ValueError, TypeError):
             continue
+        if ci not in best_by_claim:
+            best_by_claim[ci] = mp
+
+    scored = unpriced = verified = skipped_dupe = 0
+    for ci, mp in sorted(best_by_claim.items()):
+        if ci >= len(claims):
+            continue
+        claim = claims[ci]
         market = market_by_id.get(str(mp.get("market_id", "")))
         side = str(mp.get("implied_side", "")).upper()
         if not market or side not in ("YES", "NO"):
             continue
-        pair_key = (claim.get("post_url", ""), market["id"])
-        if pair_key in scored_pairs:  # never double-count across runs (PROGRAM §2)
+        pair_key = (leaker_id, market["id"])
+        if pair_key in counted_pairs:  # F2: one credit per leaker×market, ever
             skipped_dupe += 1
             continue
         winner = pm.winning_side(market)
@@ -130,9 +151,10 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -
         price_yes = pm.price_at(market["yes_token"], iso_to_unix(claim.get("post_ts", "")))
         price_side = None if price_yes is None else (price_yes if side == "YES" else 1 - price_yes)
         hit = (side == winner)
-        cls = str(claim.get("call_class", "unclassified")).strip() or "unclassified"
+        cls = normalize_class(claim.get("call_class", ""), cfg, domain)
         row = ensure_leaker_row(leakers, base, cls)
-        update_leaker_stats(row, hit, price_side, th)
+        update_leaker_stats(row, hit, price_side, th)  # F1: unpriced → n_unpriced only
+        counted = price_side is not None
         append_tsv(ddir / "signals.tsv", {
             "signal_id": gen_id("hist"), "ts_detected": now_iso(), "domain": domain,
             "leaker_id": leaker_id, "platform": platform,
@@ -143,14 +165,38 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, scored_pairs, posts_limit) -
             "price_at_signal": "" if price_yes is None else f"{price_yes:.3f}",
             "liquidity_usd": f"{market['liquidity']:.0f}",
             "status": "historical", "resolved_outcome": winner,
-            "note": "unpriced-fallback" if price_yes is None else "back-test",
+            "stat_counted": "true" if counted else "false",
+            "note": "back-test" if counted else "unpriced — audit only, excluded from gate (F1)",
         })
-        scored_pairs.add(pair_key)
-        scored += 1
+        counted_pairs.add(pair_key)
+        if counted:
+            scored += 1
+        else:
+            unpriced += 1
         if row["status"] == "verified":
             verified += 1
-    return (f"{handle}: {len(claims)} claims, {scored} scored, {skipped_dupe} dupes skipped, "
+    return (f"{handle}: {len(claims)} claims → {scored} priced calls scored, "
+            f"{unpriced} unpriced (audit-only), {skipped_dupe} dupes blocked, "
             f"{verified} verified classes")
+
+
+def deepen_targets(leakers: list[dict], cap: int) -> list[dict]:
+    """F5: any partially-scored, non-verified, non-retired leaker is eligible."""
+    by_leaker: dict[str, list[dict]] = {}
+    for r in leakers:
+        if r["call_class"] != "-":
+            by_leaker.setdefault(r["leaker_id"], []).append(r)
+    eligible = []
+    for lid, rows in by_leaker.items():
+        if any(r["status"] == "verified" for r in rows):
+            continue
+        if all(r["status"] == "retired" for r in rows):
+            continue
+        total_n = sum(int(r.get("n_calls") or 0) for r in rows)
+        eligible.append((total_n, rows[0]))
+    eligible.sort(key=lambda x: x[0])
+    return [{"platform": r["platform"], "handle": r["handle"], "status": "deepen",
+             "rationale": "deepen partially-scored leaker"} for _, r in eligible[:cap]]
 
 
 def main():
@@ -164,38 +210,42 @@ def main():
     ctx = agent_context("explorer")
     leakers = read_tsv(ddir / "leakers.tsv")
     candidates = read_tsv(ddir / "candidates.tsv")
-    scored_pairs = {(s["post_url"], s["market_id"])
-                    for s in read_tsv(ddir / "signals.tsv") if s["status"] == "historical"}
+    counted_pairs = {(s["leaker_id"], s["market_id"])
+                     for s in read_tsv(ddir / "signals.tsv")
+                     if s["status"] == "historical" or s.get("stat_counted") == "true"}
 
     added = propose_candidates(cfg, ctx, args.domain, brief, leakers, candidates)
     candidates = read_tsv(ddir / "candidates.tsv")
 
+    now_unix = iso_to_unix(now_iso())
+    std_start = unix_to_iso(now_unix - src["history_days"] * 86400)
+
     # Queue: SEEDS FIRST (a human vouched for them), then new proposals.
     queue = [{"platform": r["platform"], "handle": r["handle"], "status": "seed",
-              "rationale": r.get("notes", "")}
+              "rationale": r.get("notes", ""), "_start": std_start, "_end": None,
+              "_limit": src["history_max_posts"]}
              for r in leakers if r["call_class"] == "-" and r["status"] == "candidate"
              and not any(x["call_class"] != "-" for x in leakers
                          if x["leaker_id"] == r["leaker_id"])]
-    queue += [c for c in candidates if c["status"] == "new"]
+    queue += [{**c, "_start": std_start, "_end": None, "_limit": src["history_max_posts"]}
+              for c in candidates if c["status"] == "new"]
     queue = queue[:candidate_cap(cfg)]
     mode = "qualify"
 
-    # Deepen mode: queue empty → push the thinnest probation leaker toward the gate.
-    posts_limit = src["history_max_posts"]
-    if not queue:
-        probation = [r for r in leakers if r["status"] == "probation"]
-        if probation:
-            thin = min(probation, key=lambda r: int(r.get("n_calls") or 0))
-            queue = [{"platform": thin["platform"], "handle": thin["handle"],
-                      "status": "deepen", "rationale": "deepen thinnest probation leaker"}]
-            posts_limit = src["history_max_posts"] * 2
-            mode = f"deepen:{thin['handle']}"
+    if not queue:  # deepen: OLDER window, more posts
+        targets = deepen_targets(leakers, 2 if kickstart_active(cfg) else 1)
+        for t in targets:
+            t.update({"_start": unix_to_iso(now_unix - 2 * src["history_days"] * 86400),
+                      "_end": std_start, "_limit": src["history_max_posts"] * 2})
+        queue = targets
+        mode = "deepen:" + ",".join(t["handle"] for t in targets) if targets else "idle"
 
     summaries = []
     for cand in queue:
         try:
             summaries.append(qualify(cfg, ctx, args.domain, brief, leakers, cand,
-                                     scored_pairs, posts_limit))
+                                     counted_pairs, cand["_limit"],
+                                     cand["_start"], cand["_end"]))
         except Exception as e:  # noqa: BLE001 — skip-and-log boundary (§7)
             summaries.append(f"{cand.get('handle')}: FAILED {e}")
         for c in candidates:

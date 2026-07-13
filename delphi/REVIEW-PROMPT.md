@@ -1,8 +1,8 @@
-# External review prompt (paste everything below this line into the reviewer)
+# External review prompt v2 (paste everything below this line into the reviewer)
 
 ---
 
-You are reviewing **Delphi**, a leaker-driven Polymarket **paper-trading**
+You are RE-REVIEWING **Delphi**, a leaker-driven Polymarket **paper-trading**
 research harness, located in the `delphi/` directory of
 https://github.com/keyclaw6/personal-assistant-oc on the default **`main`**
 branch.
@@ -11,83 +11,75 @@ Start here: https://github.com/keyclaw6/personal-assistant-oc/tree/main/delphi
 Raw-file pattern:
 `https://raw.githubusercontent.com/keyclaw6/personal-assistant-oc/main/delphi/<path>`
 
+This is the second review round. Your previous report produced findings F1–F8,
+and the builder claims all eight are fixed. Your job now: (A) verify each fix
+actually holds in the current code, and (B) hunt for NEW problems — especially
+ones the fixes themselves may have introduced.
+
+## Part A — verify the eight claimed fixes
+
+- **F1** (was: look-ahead / stale prices; outcome-dependent unpriced fallback):
+  `polymarket.price_at` must now return only observations at-or-before post
+  time within a freshness bound, and `lib.update_leaker_stats` must exclude
+  unpriced calls from all verification arithmetic (audit-only `n_unpriced`).
+- **F2** (was: double-counting): one market per claim in explorer Task C
+  handling; one credit per (leaker, market) pair ever, enforced across both
+  historical scoring and live folding via `stat_counted`.
+- **F3** (was: point-estimate gate, unused history window): Wilson lower-bound
+  gate (`edge_lcb`), frozen call-class taxonomy (`normalize_class`), paginated
+  date-bounded history fetch in `sources.py`, deepen mode using older windows.
+- **F4** (was: cron races, non-idempotent resolve): single shared lock in
+  `crontab.example`, atomic `write_tsv`, resolve skips positions already in
+  `resolved.tsv`.
+- **F5** (was: stuck class lifecycle, class-string mismatch): deepen targets
+  any partially-scored non-verified leaker; heartbeat injects the leaker's
+  existing classes + fixed taxonomy and normalizes before the verified gate.
+- **F6** (was: cursor skips, permanent transient failures, unfolded expired):
+  cursor advances only on clean batches; `search_markets` distinguishes None
+  (transient) from [] (genuine no-match); resolve folds `expired` and stale
+  `pending_judge` signals.
+- **F7** (was: denylist config patch, self-edit, fake reverts): exact
+  allowlist with type/range validation in `lib.CONFIG_PATCH_ALLOWED`;
+  editable-files regex excludes orchestrator's own AGENT.md/prompt; every
+  amendment stores a before-image and `revert` restores it.
+- **F8** (was: unslipped fills, non-self-financing bankroll): shares/entry/P&L
+  from the slippage-adjusted fill on a side-specific quote (NO token book when
+  available); equity = bankroll + realized P&L − open cost drives sizing.
+
+For each: CONFIRMED, PARTIAL (what remains), or NOT FIXED (evidence).
+
+## Part B — fresh review
+
+Same priorities as before: (1) goal fitness — does the measurement remain
+valid end-to-end; (2) statistical validity of qualification; (3) loop
+correctness over weeks (state growth, stuck states, prompt↔parser contract
+mismatches, checked field by field); (4) authority/self-modification safety;
+(5) paper-book honesty. Pay special attention to seams the fixes created:
+new columns vs old rows, None-propagation from the stricter price/search
+functions, cursor logic under repeated transient failures, allowlist regex
+vs the orchestrator prompt's claims.
+
 ## Hard scope boundary
 
-Review ONLY files under `delphi/`. The rest of the repository is an unrelated
-personal-assistant system and is explicitly OUT of scope: do not read, quote,
-describe, or comment on `albert/`, `hermes/`, `plugins/`, `openclaw-config/`,
-`scripts/`, `secrets/`, `docs/`, `evals/`, `state/`, `test/`, `archive/`, or
-any root-level file. If a finding would require discussing those paths, drop
-it. The single allowed exception: you may note whether `delphi/` truly avoids
-touching anything outside itself, since isolation is one of its stated
-invariants.
-
-## What the system is supposed to do
-
-1. **Explorer** (LLM, every 3h during kickstart): discover accounts that post
-   inside information; back-test their historical posts against RESOLVED
-   Polymarket markets; score each call against the market price AT POST TIME.
-   A leaker×call_class is verified at n≥10 calls and hit_rate −
-   avg_price_at_call ≥ 0.05.
-2. **Heartbeat** (LLM, every 10 min): sweep verified+probation leakers for new
-   posts; extract falsifiable claims; match to OPEN markets; log signal rows
-   with price-at-detection. Probation rows are tracked, never bet.
-3. **Judge** (strong LLM): for verified leakers' signals, output independent
-   p_yes + confidence; scripts compute edge = p_side − price_side − slippage
-   and open PAPER positions when edge ≥ 0.10 and confidence ≥ 0.60,
-   fractional-Kelly sized.
-4. **Resolve** (scripts, 6h): close positions on resolution (P&L, Brier); fold
-   EVERY resolved signal into per-leaker per-call-class stats.
-5. **Orchestrator** (strong LLM, hourly): observes everything; applies at most
-   ONE allowlisted amendment per run (prompts, agent memory curation, domain
-   briefs, guarded config keys), framed as an experiment with metric and
-   review date; may not touch invariants, ledger history, roles, or bankroll.
-
-Key files: `PROGRAM.md` (the law), `config.json`, `prompts/*.md`,
-`agents/*/AGENT.md|MEMORY.md`, `scripts/*.py` (stdlib-only Python),
-`domains/ai-releases/*.tsv` (state), `ledger/`.
-
-## What to review for (in priority order)
-
-1. **Goal fitness** — will this actually measure whether following qualified
-   leakers beats the Polymarket price? Look for anything that silently
-   invalidates the measurement (look-ahead bias, survivorship, price-at-wrong-
-   time, double counting, leakage between qualification and betting).
-2. **Statistical validity of leaker qualification** — the false-positive and
-   false-negative paths: mapping a claim to the wrong market, crediting
-   amplifiers over originators, the unpriced-history fallback (hit→0.85,
-   miss→0.50), n≥10 gate, per-call-class splitting. Would you trust a
-   "verified" leaker from this pipeline? What is the weakest link?
-3. **Loop correctness over time** — trace each agent's behavior across weeks:
-   state growth, stuck states, missing re-entry paths, race conditions between
-   the cron jobs, prompt/JSON contract mismatches between prompts and the
-   Python that parses them (check the schemas in prompts against the parsing
-   code field by field).
-4. **Authority and self-modification safety** — can the orchestrator (or any
-   LLM output) escape its allowlist, corrupt recorded history, alter gate
-   math, or amplify itself? Check `apply_amendment`, `config_patch`, and the
-   regex allowlist against creative inputs.
-5. **Paper-trading honesty** — entry prices, slippage haircut, exposure
-   accounting, Brier accounting: is the simulated book fair, or does it
-   flatter the system?
+Review ONLY files under `delphi/`. Everything else in the repository
+(`albert/`, `hermes/`, `plugins/`, `openclaw-config/`, `scripts/`, `secrets/`,
+`docs/`, `evals/`, `state/`, `test/`, `archive/`, root files) is an unrelated
+personal-assistant system and is OUT of scope — do not read, quote, describe,
+or comment on it. Single allowed exception: noting whether `delphi/` truly
+avoids touching anything outside itself.
 
 ## What NOT to report
 
-- Security hardening, prompt-injection theory, sandboxing, or secrets handling
-  — unless a concrete path corrupts the measurement or the ledger.
+- Security hardening, prompt-injection theory, sandboxing, secrets handling —
+  unless a concrete path corrupts the measurement or the ledger.
 - Code style, typing, packaging, test coverage, performance, scalability.
 - Hypotheticals without a concrete failure path in THIS code.
 - Anything about live trading — the system is paper-only by design.
 
-## Report format (I will paste your report back to the builder verbatim)
+## Report format (pasted back to the builder verbatim)
 
-For each finding:
-- **ID** (F1, F2, …), **Severity**: BLOCKING (invalidates the goal/measurement)
-  / MAJOR (materially degrades it) / MINOR (worth fixing, not urgent)
-- **Evidence**: exact file path + the specific lines/fields/logic
-- **Failure path**: the concrete sequence in which it goes wrong
-- **Suggested fix**: one or two sentences
-
-End with a one-paragraph overall verdict. A short list of genuinely critical
-findings beats a long list of nitpicks. "Nothing critical found" is a
-legitimate, welcome conclusion — do not manufacture findings.
+Part A: one line per F1–F8 (CONFIRMED / PARTIAL / NOT FIXED + evidence if not
+confirmed). Part B: findings as before — ID (G1, G2, …), Severity
+(BLOCKING / MAJOR / MINOR), Evidence (file + lines/logic), Failure path,
+Suggested fix. End with a one-paragraph verdict. "All fixes confirmed, nothing
+new found" is a legitimate, welcome conclusion — do not manufacture findings.

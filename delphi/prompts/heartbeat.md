@@ -10,9 +10,10 @@ claim about a future or just-happened event:
 
 - `claim`: one self-contained sentence (name the subject explicitly)
 - `post_ts`, `post_url`: from the post
-- `call_class`: reuse the roster's existing class slugs where they fit
-  (`release-timing`, `model-existence`, `feature-sighting`, `benchmark-position`,
-  `org-event`); invent a new slug only when nothing fits
+- `call_class`: MUST come from the fixed taxonomy injected below ("FIXED
+  CALL-CLASS TAXONOMY"), preferring one of this leaker's existing classes when
+  it fits. Never invent new class names — anything else is normalized to
+  `unclassified` and will not route to the judge
 - `market_query`: 2–5 keywords to find the matching open Polymarket market
 - `hedged`: true if the post hedges ("hearing", "maybe", "not confirmed")
 - `urgency`: "hot" if the claim implies imminent resolution or a market that will

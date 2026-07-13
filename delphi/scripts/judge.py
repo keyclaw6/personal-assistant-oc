@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Judge (after each heartbeat): strong-model probability estimate for pending
 signals from verified leakers; scripts compute edge and size and open PAPER
-positions (PROGRAM §3). Exposure-stacking guard: one open position per market.
-The judge sees its own calibration record and retrieved similar past cases.
+positions.
+
+Review fixes baked in:
+- F8: shares/entry/P&L use the slippage-adjusted FILL price on a side-specific
+  quote (NO-side book via its own token when available); the paper account is
+  self-financing: equity = bankroll + realized P&L − nothing imaginary.
+- F6: transient market-lookup failure leaves the signal pending (retry);
+  only a confirmed closed market expires it.
+- Exposure-stacking guard: one open position per market.
 """
 from __future__ import annotations
 
@@ -10,22 +17,15 @@ import argparse
 
 import cognee
 import polymarket as pm
-from lib import (ROOT, agent_context, append_lessons, append_tsv, compute_edge,
-                 domain_dir, gen_id, leaker_row, load_config, log_result,
-                 now_iso, position_size, read_tsv, side_values, write_note,
-                 write_tsv)
+from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
+                 gen_id, leaker_row, load_config, log_result, now_iso,
+                 position_size, read_tsv, side_values, write_note, write_tsv)
 from llm import call_json
 
 MAX_PER_RUN = 10
 
 
-def open_exposure(positions: list[dict]) -> float:
-    return sum(float(p.get("size_usd") or 0) for p in positions
-               if p.get("status") == "open")
-
-
 def calibration_record(signals: list[dict]) -> str:
-    """Deterministic per-call-class Brier summary of the judge's past outputs."""
     agg: dict[str, list[float]] = {}
     for s in signals:
         if not s.get("judge_p") or s.get("resolved_outcome") not in ("YES", "NO"):
@@ -42,6 +42,26 @@ def calibration_record(signals: list[dict]) -> str:
                      for cls, v in sorted(agg.items()))
 
 
+def side_quote(market: dict, side: str, fallback_yes: float | None) -> tuple[float | None, bool]:
+    """Side-specific executable quote (F8). Returns (quote, stale_flag)."""
+    q_yes = pm.midpoint(market["yes_token"])
+    if side == "YES":
+        if q_yes is not None:
+            return q_yes, False
+    else:
+        q_no = pm.midpoint(market["no_token"]) if market.get("no_token") else None
+        if q_no is not None:
+            return q_no, False
+        if q_yes is not None:
+            return 1.0 - q_yes, False
+    if market.get("yes_price") is not None:
+        p = market["yes_price"]
+        return (p if side == "YES" else 1.0 - p), True
+    if fallback_yes is not None:
+        return (fallback_yes if side == "YES" else 1.0 - fallback_yes), True
+    return None, True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", default="ai-releases")
@@ -54,38 +74,53 @@ def main():
     signals = read_tsv(ddir / "signals.tsv")
     leakers = read_tsv(ddir / "leakers.tsv")
     positions = read_tsv(ddir / "positions.tsv")
+    resolved = read_tsv(ddir / "resolved.tsv")
 
     pending = [s for s in signals if s["status"] == "pending_judge"][:MAX_PER_RUN]
     if not pending:
         return  # quiet — heartbeat already logged the sweep
 
-    bankroll = cfg["bankroll_usd"]
-    available = max(0.0, bankroll - open_exposure(positions))
+    # F8: self-financing paper account.
+    realized = sum(float(r.get("pnl_usd") or 0) for r in resolved)
+    equity = cfg["bankroll_usd"] + realized
+    open_cost = sum(float(p.get("size_usd") or 0) for p in positions
+                    if p.get("status") == "open")
+    available = max(0.0, equity - open_cost)
     open_markets = {p["market_id"] for p in positions if p.get("status") == "open"}
     calib = calibration_record(signals)
+    slippage = th["slippage"]
     n_bet = n_pass = 0
     lessons_all: list[str] = []
     events: list[str] = []
 
     for s in pending:
-        if s["market_id"] in open_markets:  # exposure-stacking guard (PROGRAM §3)
+        if s["market_id"] in open_markets:
             s["status"] = "pass"
             s["note"] = "already positioned on this market — stacking guard"
             n_pass += 1
             continue
         market = pm.get_market(s["market_id"])
-        if not market or market["closed"]:
-            s["status"] = "expired"
-            s["note"] = (s.get("note", "") + " market closed/unavailable at judge time").strip()
+        if market is None:  # F6: transient — stay pending, retry next run
+            s["note"] = "market lookup failed — retrying next run"
             continue
-        price_yes = pm.midpoint(market["yes_token"])
-        if price_yes is None:
-            price_yes = market["yes_price"] or float(s["price_at_signal"])
+        if market["closed"]:
+            s["status"] = "expired"
+            s["note"] = "market closed before judging"
+            continue
+        try:
+            fallback_yes = float(s["price_at_signal"])
+        except (TypeError, ValueError):
+            fallback_yes = None
+        quote_side, stale = side_quote(market, s["side"], fallback_yes)
+        if quote_side is None or not 0.0 < quote_side < 1.0:
+            s["note"] = "no usable quote — retrying next run"
+            continue
+        quote_yes_disp = quote_side if s["side"] == "YES" else 1.0 - quote_side
 
         lk = leaker_row(leakers, s["leaker_id"], s["call_class"]) or {}
         scorecard = (f"n_calls={lk.get('n_calls')}, hit_rate={lk.get('hit_rate')}, "
                      f"avg_price_at_call={lk.get('avg_price_at_call')}, "
-                     f"est_edge={lk.get('est_edge')}")
+                     f"edge_lcb={lk.get('edge_lcb')}, n_unpriced={lk.get('n_unpriced')}")
         corroboration = [
             f"[{x['ts_detected']}] {x['leaker_id']}: {x['claim'][:120]} (side {x['side']})"
             for x in signals
@@ -97,7 +132,9 @@ def main():
                   + f"\n\n## MARKET\nquestion: {market['question']}"
                   + f"\nresolution criteria: {market['description']}"
                   + f"\nend date: {market['end_date']}"
-                  + f"\ncurrent YES price: {price_yes:.3f} | liquidity: {market['liquidity']:.0f} USD"
+                  + f"\ncurrent YES price: {quote_yes_disp:.3f}"
+                  + (" (stale fallback quote)" if stale else "")
+                  + f" | liquidity: {market['liquidity']:.0f} USD"
                   + f"\n\n## LEAKER POST\nleaker: {s['leaker_id']} (hedged: {s['hedged']})"
                   + f"\nposted: {s['post_ts']} | detected: {s['ts_detected']}"
                   + f"\nclaim: {s['claim']}"
@@ -120,22 +157,24 @@ def main():
             continue
         lessons_all += j.get("lessons") or []
 
-        edge = compute_edge(s["side"], p_yes, price_yes, th["slippage"])
+        p_side, _ = side_values(s["side"], p_yes, 0.5)
+        fill = min(0.99, quote_side + slippage)  # F8: the executable fill
+        edge = p_side - fill                      # ≡ p_side − quote − slippage
         s["judge_p"] = f"{p_yes:.3f}"
         s["judge_conf"] = f"{conf:.2f}"
         s["edge"] = f"{edge:.3f}"
         rationale = str(j.get("rationale", ""))[:180]
 
         if edge >= th["min_edge"] and conf >= th["judge_min_conf"]:
-            p_side, price_side = side_values(s["side"], p_yes, price_yes)
-            size = position_size(p_side, price_side, min(bankroll, available), th)
-            if size >= 1.0 and price_side > 0:
+            size = position_size(p_side, fill, available, th)  # Kelly on the FILL
+            if size >= 1.0:
                 pos = {
                     "position_id": gen_id("pos"), "signal_id": s["signal_id"],
                     "ts_open": now_iso(), "market_id": s["market_id"],
                     "market_question": s["market_question"], "token_id": s["token_id"],
-                    "side": s["side"], "entry_price": f"{price_side:.3f}",
-                    "size_usd": f"{size:.2f}", "shares": f"{size / price_side:.2f}",
+                    "side": s["side"], "quote_price": f"{quote_side:.3f}",
+                    "entry_price": f"{fill:.3f}",
+                    "size_usd": f"{size:.2f}", "shares": f"{size / fill:.2f}",
                     "judge_p": f"{p_yes:.3f}", "status": "open", "note": rationale,
                 }
                 append_tsv(ddir / "positions.tsv", pos)
@@ -144,11 +183,12 @@ def main():
                 s["status"] = "bet"
                 s["note"] = rationale
                 n_bet += 1
-                events.append(f"BET {s['side']} {size:.2f} @ {price_side:.3f} — "
-                              f"{s['market_question'][:70]} (p={p_yes:.2f}, edge={edge:.2f})")
+                events.append(f"BET {s['side']} {size:.2f} @ fill {fill:.3f} "
+                              f"(quote {quote_side:.3f}) — {s['market_question'][:65]} "
+                              f"(p={p_yes:.2f}, edge={edge:.2f})")
             else:
                 s["status"] = "pass"
-                s["note"] = "size below minimum after caps"
+                s["note"] = "size below minimum after caps/equity"
                 n_pass += 1
         else:
             s["status"] = "pass"
@@ -165,7 +205,7 @@ def main():
         cognee.add(note, meta=f"judge {args.domain}")
     log_result("judge", args.domain,
                f"{len(pending)} pending → {n_bet} paper bets, {n_pass} passes; "
-               f"available bankroll {available:.2f}/{bankroll}")
+               f"equity {equity:.2f} (realized {realized:+.2f}), available {available:.2f}")
 
 
 if __name__ == "__main__":

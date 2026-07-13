@@ -9,6 +9,7 @@ and logs everything: ledger/learnings.md row + dated note in its own workspace
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import time
 
@@ -73,11 +74,31 @@ def stuck_heuristics(cfg) -> str:
     return "\n".join(f"- {x}" for x in lines) or "- none detected"
 
 
+def _exp_dir():
+    d = agent_dir("orchestrator") / "experiments"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _snapshot(exp_id: str, kind: str, rel: str | None) -> None:
+    """F7: store a restorable before-image for every experiment."""
+    d = _exp_dir()
+    if kind == "file":
+        target = ROOT / rel
+        before = target.read_text(encoding="utf-8") if target.exists() else ""
+        meta = {"kind": "file", "path": rel}
+    else:
+        before = (ROOT / "config.json").read_text(encoding="utf-8")
+        meta = {"kind": "config"}
+    (d / f"{exp_id}.before").write_text(before, encoding="utf-8")
+    (d / f"{exp_id}.json").write_text(json.dumps(meta), encoding="utf-8")
+
+
 def apply_amendment(cfg, amd: dict) -> str:
-    """Validate against the allowlist and apply. Returns outcome message."""
+    """Validate against the allowlists, snapshot a before-image, apply."""
     oc = cfg["orchestrator"]
     kind = amd.get("kind")
-    exp_id = amd.get("id") or f"exp-{time.strftime('%Y%m%d-%H%M')}"
+    exp_id = re.sub(r"[^A-Za-z0-9_-]", "", str(amd.get("id") or f"exp-{time.strftime('%Y%m%d-%H%M')}"))
     if kind == "file":
         rel = str(amd.get("path", "")).lstrip("/").removeprefix("delphi/")
         if not re.match(oc["editable_files_regex"], rel):
@@ -85,10 +106,13 @@ def apply_amendment(cfg, amd: dict) -> str:
         content = str(amd.get("content", ""))
         if not content.strip():
             return "REJECTED file amendment: empty content"
+        _snapshot(exp_id, "file", rel)
         (ROOT / rel).write_text(content, encoding="utf-8")
         outcome = f"wrote {rel}"
     elif kind == "config":
-        ok, msg = config_patch(dict(amd.get("patch") or {}), oc["config_blocked_keys"])
+        patch = dict(amd.get("patch") or {})
+        _snapshot(exp_id, "config", None)
+        ok, msg = config_patch(patch)  # exact allowlist + type/range validation (F7)
         if not ok:
             return f"REJECTED config amendment: {msg}"
         outcome = f"config {msg}"
@@ -98,9 +122,24 @@ def apply_amendment(cfg, amd: dict) -> str:
         f.write(f"| {exp_id} | {now_iso()} | {outcome} | {amd.get('metric', '?')} | "
                 f"{amd.get('review_after_hours', 24)}h | live |\n")
     with open(ROOT / "ledger" / "learnings.md", "a", encoding="utf-8") as f:
-        f.write(f"| {time.strftime('%Y-%m-%d')} | {outcome} | "
+        f.write(f"| {time.strftime('%Y-%m-%d')} | {outcome} ({exp_id}) | "
                 f"{str(amd.get('rationale', ''))[:160]} | {amd.get('metric', '?')} | pending |\n")
     return outcome
+
+
+def _restore(exp_id: str) -> str:
+    """F7: a revert actually restores the before-image, not just table text."""
+    d = _exp_dir()
+    meta_p, before_p = d / f"{exp_id}.json", d / f"{exp_id}.before"
+    if not meta_p.exists() or not before_p.exists():
+        return f"{exp_id}: no before-image found — cannot restore"
+    meta = json.loads(meta_p.read_text(encoding="utf-8"))
+    before = before_p.read_text(encoding="utf-8")
+    if meta["kind"] == "file":
+        (ROOT / meta["path"]).write_text(before, encoding="utf-8")
+        return f"{exp_id}: restored {meta['path']}"
+    (ROOT / "config.json").write_text(before, encoding="utf-8")
+    return f"{exp_id}: restored config.json"
 
 
 def review_experiments(reviews: list) -> list[str]:
@@ -108,9 +147,13 @@ def review_experiments(reviews: list) -> list[str]:
     exp_path = agent_dir("orchestrator") / "EXPERIMENTS.md"
     text = exp_path.read_text(encoding="utf-8") if exp_path.exists() else ""
     for rv in reviews or []:
-        eid, verdict = str(rv.get("id", "")), str(rv.get("verdict", ""))
+        eid = re.sub(r"[^A-Za-z0-9_-]", "", str(rv.get("id", "")))
+        verdict = str(rv.get("verdict", ""))
         if not eid or verdict not in ("keep", "revert"):
             continue
+        restore_msg = ""
+        if verdict == "revert":
+            restore_msg = _restore(eid)
         lines = []
         for line in text.splitlines():
             if line.startswith(f"| {eid} ") and "| live |" in line:
@@ -118,7 +161,8 @@ def review_experiments(reviews: list) -> list[str]:
             lines.append(line)
         text = "\n".join(lines) + ("\n" if not text.endswith("\n") else "")
         with open(ROOT / "ledger" / "learnings.md", "a", encoding="utf-8") as f:
-            f.write(f"| {time.strftime('%Y-%m-%d')} | experiment {eid} verdict: {verdict} | "
+            f.write(f"| {time.strftime('%Y-%m-%d')} | experiment {eid} verdict: {verdict}"
+                    f"{' — ' + restore_msg if restore_msg else ''} | "
                     f"{str(rv.get('reason', ''))[:160]} | - | {verdict} |\n")
         notes.append(f"{eid}:{verdict}")
     if notes:

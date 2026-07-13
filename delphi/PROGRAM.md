@@ -50,11 +50,15 @@ same philosophy as the assistant's memory system.
 
 | Stage | Cadence | What it does |
 |---|---|---|
-| **explorer** | every 3 h during kickstart, then daily | Chooses (its discretion, stated in its note): qualify seed/new candidates first, or deepen the thinnest probation leaker with older history. Extracts dated claims → maps to resolved markets → scripts score hit-rate vs price-at-post-time → auto-promotion at the gate. Every scored historical call is written to `signals.tsv` as `status=historical` — the FP/FN audit trail — and never re-scored (dedupe on post_url+market_id). |
+| **explorer** | every 3 h during kickstart, then daily | Qualifies seeds first, then new candidates; when the queue is empty it deepens ANY partially-scored, non-verified leaker with an OLDER, paginated history window. Extracts dated claims → maps each claim to at most one resolved market → scripts score hit-rate vs price-at-post-time (priced calls only) → promotion at the §3 gate. Every scored call is a `status=historical` signal row — the FP/FN audit trail — with one credit per (leaker, market) pair, ever. |
 | **heartbeat** | every 10 min | Sweeps verified+probation roster for new posts → claims → open-market match → signal rows with price-at-detection. Probation rows tracked, never bet. |
 | **judge** | after each heartbeat | Verified signals only. Skips markets Delphi already holds (no exposure stacking). Independent p_yes + confidence with leaker scorecard, own calibration record, and retrieved similar past cases → scripts gate and size. |
-| **resolve** | every 6 h | Closes positions (P&L, Brier); folds EVERY resolved signal — historical, tracked, passed, bet — into per-leaker per-call-class stats; feeds summaries to Cognee. |
+| **resolve** | every 6 h | Closes positions idempotently (P&L, Brier); folds EVERY resolved signal — tracked, passed, bet, and expired — into per-leaker per-call-class stats, one credit per (leaker, market), earliest post wins; feeds summaries to Cognee. |
 | **orchestrator** | hourly | §6. |
+
+All state-mutating jobs serialize on ONE shared lock (`tmp/state.lock`) and
+all table rewrites are atomic — concurrent runs can never erase each other's
+rows.
 
 **Kickstart mode** (config `kickstart`, active until its date): explorer runs
 aggressively (higher candidate cap, 3-hourly cron) to build the roster fast.
@@ -63,15 +67,30 @@ The orchestrator may end or extend kickstart via config patch.
 ## §3 Gates (exact, deterministic — unchanged by any agent)
 
 ```
-verification: n_calls ≥ 10 AND est_edge = hit_rate − avg_price_at_call ≥ 0.05   (per leaker × call_class)
-judge gate:   leaker verified for call_class AND open market matched AND liquidity ≥ min AND no open position on market
-bet gate:     edge = p_side − price_side − slippage ≥ 0.10 AND confidence ≥ 0.60
-sizing:       min(0.25 × kelly(p_side, price_side) × bankroll, 5% × bankroll)
+verification: n_calls ≥ 10 PRICED calls AND edge_lcb ≥ 0.05    (per leaker × call_class)
+              where edge_lcb = wilson_lower(hits, n, z=1.2816) − avg_price_at_call
+              (90% one-sided lower bound — a 6/10 coin-flipper does not verify)
+priced call:  a price observation existed AT OR BEFORE post time, ≤48h stale.
+              No look-ahead: post-event prices are never used. Unpriced calls
+              are audit-only (n_unpriced) and never move the gate.
+one credit:   at most ONE market per claim, and at most one scored call per
+              (leaker, market) pair ever — repeats and overlapping contracts
+              cannot double-count. Chosen row carries stat_counted=true.
+judge gate:   leaker verified for call_class AND open market matched AND
+              liquidity ≥ min AND no open position on that market
+bet gate:     fill = side_quote + slippage;  edge = p_side − fill ≥ 0.10
+              AND confidence ≥ 0.60. NO-side quotes use the NO token's book
+              when available.
+sizing:       min(0.25 × kelly(p_side, fill) × available, 5% × bankroll);
+              shares = size / fill;  P&L settles those shares at 0/1.
+account:      self-financing — equity = bankroll + realized P&L;
+              available = equity − open cost. Status is recomputed on every
+              fold, so live results can demote a verified leaker.
 ```
-Unpriced historical calls use the conservative fallback (hit → assumed price
-0.85, miss → 0.50) — never flattering the leaker. False-positive control:
-mapping precision beats recall everywhere; a wrong match poisons a scorecard,
-a missed match only delays qualification.
+False-positive control: mapping precision beats recall everywhere; a wrong
+match poisons a scorecard, a missed match only delays qualification. The
+call-class taxonomy is FROZEN per domain (config `call_classes`); anything
+else normalizes to `unclassified`.
 
 ## §4 State
 
@@ -79,7 +98,11 @@ As v0.1 (TSVs under `domains/<d>/`, run log in `ledger/results.tsv`,
 amendments in `ledger/learnings.md`) plus:
 
 - `signals.tsv` gains `status=historical` rows (explorer's scored back-test
-  calls; audit trail for false-positive/false-negative review).
+  calls; audit trail for false-positive/false-negative review) and a
+  `stat_counted` column marking exactly which row carried each (leaker,
+  market) credit. `positions.tsv` records both `quote_price` and the
+  slippage-adjusted `entry_price` (the fill). `leakers.tsv` carries
+  `edge_lcb` and `n_unpriced`.
 - `agents/<name>/` workspaces (§1). Lessons are appended by the owning agent
   (≤3 per run, only when genuinely new); MEMORY.md curation (dedupe, tighten,
   reorganize) is the orchestrator's job — higher authority curates.
@@ -108,15 +131,19 @@ The orchestrator is the top-level maintainer/goal-direction agent. Hourly:
    them? are signals reaching the judge? are matches precise (FP/FN check on
    `historical` rows)? is anything stuck or drifting?
 3. May apply **at most ONE amendment per run** (script-enforced), chosen from:
-   - rewrite one task prompt (`prompts/*.md`)
-   - rewrite one agent's `AGENT.md` (mandate tuning) or curate one `MEMORY.md`
+   - rewrite one T1/T2 task prompt or `AGENT.md`, or curate one `MEMORY.md`
+     (its own `MEMORY.md` included; its own `AGENT.md` and task prompt are
+     NOT editable — no self-amplification)
    - update one domain brief
-   - patch guarded config keys (thresholds, cadence hints, sources, kickstart)
-   Blocked always: §0 invariants, `roles`, `codex_cmd`, `paper_only`,
-   `bankroll_usd`, its own governance block, ledger history.
+   - patch config via the exact ALLOWLIST in `scripts/lib.py`
+     (`CONFIG_PATCH_ALLOWED`, type/range validated: kickstart, source volumes,
+     x backend, cognee toggles). Gates, sizing, roles, bankroll and isolation
+     are NOT patchable by any agent — founder-only.
 4. Frames amendments as experiments: rationale, success metric, review-after.
-   Reviews previous experiments when due; keeps or reverts. Everything is
-   logged: one `ledger/learnings.md` row + a dated note in its workspace.
+   Every amendment stores a before-image under
+   `agents/orchestrator/experiments/`; a `revert` verdict RESTORES that
+   before-image — reverts are real, not bookkeeping. Everything is logged:
+   one `ledger/learnings.md` row + a dated note in its workspace.
 
 Mechanical failures (parse error, dead endpoint, rate limit) are fixed
 mechanically or skipped-and-logged — never treated as semantic events.

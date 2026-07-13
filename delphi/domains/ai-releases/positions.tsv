@@ -1,1 +1,1 @@
-position_id	signal_id	ts_open	market_id	market_question	token_id	side	entry_price	size_usd	shares	judge_p	status	note
+position_id	signal_id	ts_open	market_id	market_question	token_id	side	quote_price	entry_price	size_usd	shares	judge_p	status	note
