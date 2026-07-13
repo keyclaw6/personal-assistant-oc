@@ -19,6 +19,7 @@
     "test": "npm run test:e2e:scripts",
     "cognee": "bash scripts/cognee-server.sh",
     "hermes:migrate": "node scripts/hermes-migrate-local.mjs",
+    "hermes:webhook:sync": "node scripts/hermes-messenger-webhook-sync.mjs",
     "secrets:export": "node scripts/secrets-export.mjs",
     "secrets:import": "node scripts/secrets-import.mjs",
     "repo:check": "node scripts/repo-check.mjs",

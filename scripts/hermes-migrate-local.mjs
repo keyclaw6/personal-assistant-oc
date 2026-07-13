@@ -14,6 +14,7 @@ const HERMES_AGENT = path.join(HERMES_HOME, "hermes-agent");
 const HERMES_PYTHON = path.join(HERMES_AGENT, "venv/bin/python");
 const HERMES_ENV = path.join(HERMES_HOME, ".env");
 const HERMES_CONFIG = path.join(HERMES_HOME, "config.yaml");
+const USER_SYSTEMD_DIR = path.join(os.homedir(), ".config/systemd/user");
 
 function readJson(file, fallback = undefined) {
   try {
@@ -93,6 +94,63 @@ function linkPlugin(name) {
   }
   symlinkSync(target, link, "dir");
   return { name, linked: true, target, link };
+}
+
+function installMessengerWebhookSync() {
+  const serviceName = "hermes-messenger-webhook-sync.service";
+  const timerName = "hermes-messenger-webhook-sync.timer";
+  const script = path.join(REPO, "scripts/hermes-messenger-webhook-sync.mjs");
+  const node = process.execPath;
+  mkdirSync(USER_SYSTEMD_DIR, { recursive: true });
+
+  writeFileSync(path.join(USER_SYSTEMD_DIR, serviceName), `[Unit]
+Description=Keep Albert's Meta Messenger webhook aligned with Tailscale
+After=network-online.target hermes-gateway.service openclaw-messenger-webhook-proxy.service
+Wants=network-online.target hermes-gateway.service openclaw-messenger-webhook-proxy.service
+
+[Service]
+Type=oneshot
+ExecStart=${JSON.stringify(node)} ${JSON.stringify(script)}
+TimeoutStartSec=90
+StandardOutput=journal
+StandardError=journal
+`);
+
+  writeFileSync(path.join(USER_SYSTEMD_DIR, timerName), `[Unit]
+Description=Periodically reconcile Albert's Messenger webhook
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=10min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=${serviceName}
+
+[Install]
+WantedBy=timers.target
+`);
+
+  const steps = [
+    ["daemon-reload"],
+    ["enable", "--now", timerName],
+    ["start", serviceName],
+  ];
+  for (const args of steps) {
+    const proc = spawnSync("systemctl", ["--user", ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (proc.status !== 0) {
+      return {
+        installed: true,
+        active: false,
+        reason: (proc.stderr || proc.stdout).trim(),
+        serviceName,
+        timerName,
+      };
+    }
+  }
+  return { installed: true, active: true, serviceName, timerName };
 }
 
 async function inferMessengerHomeChannel() {
@@ -304,6 +362,7 @@ updateHermesConfig({
   messenger_port: Number(envUpdates.MESSENGER_PORT),
   messenger_home_channel: envUpdates.MESSENGER_HOME_CHANNEL,
 });
+const webhookSync = installMessengerWebhookSync();
 
 const summary = {
   hermesHome: HERMES_HOME,
@@ -319,6 +378,7 @@ const summary = {
     allowedUsersCount: allowFrom.length,
     allowAllUsers: envUpdates.MESSENGER_ALLOW_ALL_USERS === "true",
     hasHomeChannel: Boolean(homeChannel),
+    webhookSync,
   },
   cognee: {
     envFile: envUpdates.ALBERT_COGNEE_ENV,
