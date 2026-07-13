@@ -1,0 +1,5 @@
+leaker_id	platform	handle	domain	call_class	status	n_calls	hits	hit_rate	avg_price_at_call	est_edge	last_seen_ts	notes
+x-apples_jimmy	x	apples_jimmy	ai-releases	-	candidate	0	0			 	 	seed - widely cited OpenAI leaker; must be qualified by explorer from history, do not hand-promote
+x-testingcatalog	x	testingcatalog	ai-releases	-	candidate	0	0			 	 	seed - feature/UI sightings account; qualify from history
+x-btibor91	x	btibor91	ai-releases	-	candidate	0	0			 	 	seed - API-string and changelog sightings; qualify from history
+x-flowersslop	x	flowersslop	ai-releases	-	candidate	0	0			 	 	seed - occasional early sightings, noisy; qualify from history

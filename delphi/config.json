@@ -1,0 +1,50 @@
+{
+  "paper_only": true,
+  "bankroll_usd": 1000,
+  "thresholds": {
+    "min_edge": 0.10,
+    "slippage": 0.02,
+    "judge_min_conf": 0.60,
+    "verify_min_calls": 10,
+    "verify_min_edge": 0.05,
+    "kelly_fraction": 0.25,
+    "max_stake_frac": 0.05,
+    "min_liquidity_usd": 1000
+  },
+  "cadence": {
+    "heartbeat_minutes": 10,
+    "explorer": "daily",
+    "resolve_hours": 6
+  },
+  "roles": {
+    "explorer": { "backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning": "high" },
+    "heartbeat": { "backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning": "high" },
+    "judge": {
+      "backend": "http",
+      "model": "anthropic/claude-opus-4.6",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "reasoning": "high"
+    }
+  },
+  "codex_cmd": [
+    "codex", "exec",
+    "--skip-git-repo-check",
+    "--sandbox", "read-only",
+    "-m", "{model}",
+    "-c", "model_reasoning_effort=\"{reasoning}\"",
+    "--output-last-message", "{outfile}",
+    "-"
+  ],
+  "llm": { "timeout_seconds": 600, "max_json_retries": 1 },
+  "domains": ["ai-releases"],
+  "sources": {
+    "x_backend": "exa",
+    "exa_api_key_env": "EXA_API_KEY",
+    "x_bearer_env": "X_BEARER_TOKEN",
+    "reddit_user_agent": "delphi-paper-trader/0.1 (personal research)",
+    "explorer_max_candidates_per_run": 3,
+    "history_days": 180,
+    "history_max_posts": 50
+  }
+}

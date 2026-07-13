@@ -1,0 +1,17 @@
+# Delphi paper trader — crontab (adjust REPO path; install with `crontab -e`)
+# Prereqs: `mkdir -p ~/personal-assistant-oc/delphi/tmp`, dotenvx, logged-in codex CLI.
+# flock prevents overlapping heartbeats when LLM calls run long.
+
+REPO=/Users/kristian/personal-assistant-oc
+
+# Heartbeat sweep + judge, every 10 minutes (PROGRAM.md §1)
+*/10 * * * * cd $REPO && flock -n delphi/tmp/hb.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/heartbeat.py --domain ai-releases && dotenvx run -f .env.delphi -- python3 delphi/scripts/judge.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+
+# Resolver, every 6 hours
+17 */6 * * * cd $REPO && dotenvx run -f .env.delphi -- python3 delphi/scripts/resolve.py --domain ai-releases >> delphi/tmp/cron.log 2>&1
+
+# Explorer (discovery + historical qualification), daily 06:07
+7 6 * * * cd $REPO && flock -n delphi/tmp/ex.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+
+# Daily state snapshot — commits ONLY delphi/ paths (isolation, PROGRAM.md §0.3)
+49 20 * * * cd $REPO && git add delphi && git diff --cached --quiet || git commit -m "delphi: daily state snapshot" >> delphi/tmp/cron.log 2>&1
