@@ -23,11 +23,13 @@ narrow exceptions).
 
 ## What the system is supposed to do
 
-The goal: measure whether following qualified leakers beats the Polymarket
-price. PROGRAM.md is the loop law — read it first, including §7's "accepted
-prototype limits", which are deliberate scope decisions with stated
-mitigations, NOT open bugs (do not re-report them unless a mitigation is
-factually broken).
+`VISION.md` is the founder's North Star — the system exists to make trading
+profit from proven leakers (currently in a paper-validation phase). Read it
+first, then PROGRAM.md, the loop law — including §7's "accepted prototype
+limits", which are deliberate scope decisions with stated mitigations, NOT
+open bugs (do not re-report them unless a mitigation is factually broken).
+Part of your job is coherence: does the implementation actually serve the
+vision?
 
 1. **Explorer** (LLM): discover leaker accounts; back-test their historical
    posts against RESOLVED markets; score only calls with a genuine price
@@ -38,9 +40,12 @@ factually broken).
    atomic commits; extract claims; match to OPEN markets; log signal rows
    with price-at-detection. Probation rows tracked, never bet.
 3. **Judge** (strong LLM): independent p_yes + confidence (strict range
-   validation, rejects not clamps); fills re-quoted AFTER judgment from the
-   executable best ask + slippage buffer; fractional-Kelly on a
-   self-financing paper account (equity = bankroll + realized P&L).
+   validation, rejects not clamps), fed a deterministic WEIGHTED CROSS-LEAKER
+   AGGREGATE (each roster leaker once, weighted by proven lower-bound edge,
+   halved for probation/hedged — input only, never a gate); fills re-quoted
+   AFTER judgment from the executable best ask + slippage buffer;
+   fractional-Kelly on a self-financing paper account (equity = bankroll +
+   realized P&L).
 4. **Resolve** (scripts, 6h): idempotent position closes (P&L, Brier); folds
    every resolved signal — including expired — one credit per (leaker,
    event), earliest post first; live folds tracked separately (n_live).

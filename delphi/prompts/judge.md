@@ -26,7 +26,13 @@ You will be given:
    that is the whole point — but know WHY: your private information is the
    leaker's post + scorecard. If the price likely already reflects this exact
    post (posted hours ago, market already moved), say so and lower confidence.
-4. Corroboration from independent tracked leakers strengthens; conflict weakens.
+4. The WEIGHTED CROSS-LEAKER AGGREGATE is the roster's collective view of
+   this market: each leaker counted once, weighted by their proven
+   lower-bound edge (halved for probation and hedged calls). A strong lean
+   from several independently-proven leakers is powerful evidence — but watch
+   for common-origin echo (leakers repeating one underlying source are not
+   independent), and note the signal under judgment is itself included in
+   the aggregate. Conflict between proven leakers should lower confidence.
 
 ## Hard rules
 

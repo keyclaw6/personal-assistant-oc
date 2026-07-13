@@ -17,9 +17,10 @@ import argparse
 
 import cognee
 import polymarket as pm
-from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
-                 gen_id, leaker_row, load_config, log_result, now_iso,
-                 position_size, read_tsv, side_values, write_note, write_tsv)
+from lib import (ROOT, agent_context, aggregate_market_signals, append_lessons,
+                 append_tsv, domain_dir, format_aggregate, gen_id, leaker_row,
+                 load_config, log_result, now_iso, position_size, read_tsv,
+                 side_values, write_note, write_tsv)
 from llm import call_json
 
 MAX_PER_RUN = 10
@@ -121,12 +122,12 @@ def main():
         lk = leaker_row(leakers, s["leaker_id"], s["call_class"]) or {}
         scorecard = (f"n_calls={lk.get('n_calls')}, hit_rate={lk.get('hit_rate')}, "
                      f"avg_price_at_call={lk.get('avg_price_at_call')}, "
-                     f"edge_lcb={lk.get('edge_lcb')}, n_unpriced={lk.get('n_unpriced')}")
-        corroboration = [
-            f"[{x['ts_detected']}] {x['leaker_id']}: {x['claim'][:120]} (side {x['side']})"
-            for x in signals
-            if x["market_id"] == s["market_id"] and x["signal_id"] != s["signal_id"]
-        ][-5:]
+                     f"edge_lcb={lk.get('edge_lcb')}, n_unpriced={lk.get('n_unpriced')}, "
+                     f"n_live={lk.get('n_live')}")
+        # VISION: deterministic weighted aggregate across ALL roster leakers
+        # with live calls on this market — input to the judge, never a gate.
+        agg_block = format_aggregate(
+            aggregate_market_signals(signals, leakers, s["market_id"]))
         past = cognee.search(f"{s['call_class']} {market['question'][:80]}", 3)
 
         prompt = (ctx + "\n\n" + prompt_t
@@ -142,8 +143,8 @@ def main():
                   + f"\nimplied side: {s['side']}"
                   + f"\n\n## LEAKER SCORECARD ({s['call_class']})\n{scorecard}"
                   + f"\n\n## YOUR CALIBRATION RECORD\n{calib}"
-                  + "\n\n## OTHER TRACKED SIGNALS ON THIS MARKET\n"
-                  + ("\n".join(corroboration) or "none")
+                  + "\n\n## WEIGHTED CROSS-LEAKER AGGREGATE (this market)\n"
+                  + agg_block
                   + "\n\n## RETRIEVED PAST CASES\n" + ("\n".join(past) or "none")
                   + "\n\n## REQUEST\nEstimate now. JSON only.")
         j = call_json("judge", prompt, cfg)

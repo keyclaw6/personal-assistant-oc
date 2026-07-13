@@ -353,6 +353,78 @@ def normalize_class(call_class: str, cfg: dict, domain: str) -> str:
     return c if c in allowed else "unclassified"
 
 
+# ---------- weighted cross-leaker aggregation (VISION: "aggregate all the
+# different leakers with their weighted score") ----------
+
+def leaker_weight(row: dict) -> float:
+    """A leaker×class's aggregation weight = their PROVEN lower-bound edge.
+    No proven edge → no weight. Probation counts at half weight."""
+    try:
+        lcb = float(row.get("edge_lcb") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if int(row.get("n_calls") or 0) < 3 or lcb <= 0.0:
+        return 0.0
+    return round(lcb * (1.0 if row.get("status") == "verified" else 0.5), 4)
+
+
+def aggregate_market_signals(signals: list[dict], leakers: list[dict],
+                             market_id: str) -> dict:
+    """Deterministic weighted aggregate of all live roster calls on a market.
+
+    Each leaker counts ONCE (their latest unresolved call); direction is
+    +1 for YES, −1 for NO; weight = leaker_weight of their (leaker, class)
+    row, halved again when the call is hedged. `weighted_lean` ∈ [−1, +1].
+    This is INPUT for the judge — it never gates or sizes anything itself.
+    """
+    per_leaker: dict[str, dict] = {}
+    for s in signals:
+        if s.get("market_id") != market_id or s.get("resolved_outcome"):
+            continue
+        if s.get("side") not in ("YES", "NO"):
+            continue
+        if s.get("status") not in ("pending_judge", "tracked_probation", "bet", "pass"):
+            continue
+        cur = per_leaker.get(s["leaker_id"])
+        if cur is None or (s.get("post_ts") or "") > (cur.get("post_ts") or ""):
+            per_leaker[s["leaker_id"]] = s
+    contributors = []
+    score = wsum = 0.0
+    n_yes = n_no = 0
+    for lid, s in per_leaker.items():
+        row = leaker_row(leakers, lid, s["call_class"]) or {}
+        w = leaker_weight(row)
+        if s.get("hedged") == "true":
+            w *= 0.5
+        direction = 1.0 if s["side"] == "YES" else -1.0
+        contributors.append({"leaker_id": lid, "call_class": s["call_class"],
+                             "side": s["side"], "weight": round(w, 4),
+                             "hedged": s.get("hedged") == "true"})
+        score += w * direction
+        wsum += w
+        n_yes += 1 if s["side"] == "YES" else 0
+        n_no += 1 if s["side"] == "NO" else 0
+    contributors.sort(key=lambda c: -c["weight"])
+    return {"n_leakers": len(per_leaker), "n_yes": n_yes, "n_no": n_no,
+            "weighted_score": round(score, 4),
+            "weighted_lean": round(score / wsum, 3) if wsum > 0 else 0.0,
+            "contributors": contributors}
+
+
+def format_aggregate(agg: dict) -> str:
+    if not agg["n_leakers"]:
+        return "no live roster calls on this market"
+    lines = [f"roster leakers with live calls: {agg['n_leakers']} "
+             f"(YES {agg['n_yes']} / NO {agg['n_no']}) | weighted lean "
+             f"{agg['weighted_lean']:+.2f} (−1 = all proven weight on NO, "
+             f"+1 = all proven weight on YES; weight = each leaker's "
+             f"lower-bound edge, halved for probation and for hedged calls)"]
+    for c in agg["contributors"][:8]:
+        lines.append(f"- {c['leaker_id']} [{c['call_class']}] {c['side']} "
+                     f"weight {c['weight']:.3f}" + (" (hedged)" if c["hedged"] else ""))
+    return "\n".join(lines)
+
+
 def kickstart_active(cfg: dict) -> bool:
     until = (cfg.get("kickstart") or {}).get("active_until", "")
     return bool(until) and now_iso() < until
