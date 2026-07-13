@@ -8,6 +8,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit
 
 try:
     import aiohttp
@@ -24,12 +25,27 @@ from gateway.platforms.base import (
     MessageEvent,
     MessageType,
     SendResult,
+    cache_audio_from_url,
 )
 
 logger = logging.getLogger(__name__)
 
 GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 TEXT_CHUNK_LIMIT = int(os.getenv("MESSENGER_TEXT_CHUNK_LIMIT", "2000"))
+_AUDIO_CACHE_EXTENSIONS = frozenset(
+    {
+        ".aac",
+        ".flac",
+        ".m4a",
+        ".mp3",
+        ".mp4",
+        ".mpeg",
+        ".ogg",
+        ".opus",
+        ".wav",
+        ".webm",
+    }
+)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -73,6 +89,11 @@ def _attachment_label(attachment: Dict[str, Any]) -> str:
     return f"{kind}{title}{sticker}"
 
 
+def _audio_extension_from_url(url: str) -> str:
+    extension = os.path.splitext(urlsplit(url).path)[1].lower()
+    return extension if extension in _AUDIO_CACHE_EXTENSIONS else ".ogg"
+
+
 def _normalize_inbound(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if event.get("reaction"):
         reaction = event["reaction"]
@@ -95,8 +116,11 @@ def _normalize_inbound(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     attachments = message.get("attachments") if isinstance(message, dict) else []
     attachments = attachments if isinstance(attachments, list) else []
     media = [
-        item for item in attachments
-        if isinstance(item, dict) and isinstance((item.get("payload") or {}).get("url"), str)
+        item
+        for item in attachments
+        if isinstance(item, dict)
+        and isinstance((item.get("payload") or {}).get("url"), str)
+        and (item.get("payload") or {}).get("url").strip()
     ]
     original = ""
     if isinstance(message, dict):
@@ -106,20 +130,46 @@ def _normalize_inbound(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
     attachment_summary = ""
     if attachments:
-        attachment_summary = "Messenger attachments: " + ", ".join(_attachment_label(a) for a in attachments) + "."
-    text = "\n".join(part for part in (original, attachment_summary) if part)
+        attachment_summary = (
+            "Messenger attachments: "
+            + ", ".join(_attachment_label(a) for a in attachments)
+            + "."
+        )
+    missing_audio_urls = sum(
+        1
+        for item in attachments
+        if isinstance(item, dict)
+        and (item.get("type") or "").lower() == "audio"
+        and not str((item.get("payload") or {}).get("url") or "").strip()
+    )
+    missing_audio_note = (
+        "Messenger voice attachment did not include a downloadable URL."
+        if missing_audio_urls
+        else ""
+    )
+    text = "\n".join(
+        part for part in (original, attachment_summary, missing_audio_note) if part
+    )
     if not text:
         return None
 
     msg_type = MessageType.TEXT
-    if media:
-        first_type = (media[0].get("type") or "").lower()
-        msg_type = {
-            "image": MessageType.PHOTO,
-            "video": MessageType.VIDEO,
-            "audio": MessageType.AUDIO,
-            "file": MessageType.DOCUMENT,
-        }.get(first_type, MessageType.DOCUMENT)
+    attachment_types = [
+        (item.get("type") or "").lower()
+        for item in media
+    ]
+    if "audio" in attachment_types:
+        # Messenger does not expose a reliable voice-note vs audio-file
+        # distinction. Treat its audio attachment as voice so Hermes routes
+        # the cached local file through STT. Other platforms keep their AUDIO
+        # semantics unchanged.
+        msg_type = MessageType.VOICE
+    elif "image" in attachment_types:
+        msg_type = MessageType.PHOTO
+    elif "video" in attachment_types:
+        msg_type = MessageType.VIDEO
+    elif attachment_types:
+        msg_type = MessageType.DOCUMENT
 
     return {
         "text": text,
@@ -128,6 +178,55 @@ def _normalize_inbound(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "media_types": [_attachment_media_type(item.get("type")) for item in media],
         "message_type": msg_type,
     }
+
+
+async def _cache_voice_attachments(inbound: Dict[str, Any]) -> None:
+    cached_urls: List[str] = []
+    cached_types: List[str] = []
+    failed_downloads = 0
+
+    for index, url in enumerate(inbound.get("media_urls") or []):
+        media_types = inbound.get("media_types") or []
+        media_type = media_types[index] if index < len(media_types) else ""
+        if not media_type.startswith("audio/"):
+            cached_urls.append(url)
+            cached_types.append(media_type)
+            continue
+
+        if os.path.isabs(url):
+            cached_urls.append(url)
+            cached_types.append(media_type)
+            continue
+
+        if not url.startswith(("http://", "https://")):
+            failed_downloads += 1
+            continue
+
+        try:
+            cached_path = await cache_audio_from_url(
+                url,
+                ext=_audio_extension_from_url(url),
+            )
+            cached_urls.append(cached_path)
+            cached_types.append(media_type)
+        except Exception as exc:
+            failed_downloads += 1
+            # Do not include the exception text: HTTP client errors may embed
+            # Messenger's signed attachment URL and credentials.
+            logger.warning(
+                "Failed to cache Messenger voice attachment (%s)",
+                type(exc).__name__,
+            )
+
+    inbound["media_urls"] = cached_urls
+    inbound["media_types"] = cached_types
+    if failed_downloads:
+        fallback = (
+            "Messenger voice attachment could not be downloaded for transcription."
+        )
+        inbound["text"] = "\n".join(
+            part for part in (inbound.get("text"), fallback) if part
+        )
 
 
 def _chunk_text(text: str, limit: int = TEXT_CHUNK_LIMIT) -> List[str]:
@@ -248,6 +347,8 @@ class MessengerAdapter(BasePlatformAdapter):
         inbound = _normalize_inbound(event)
         if not inbound:
             return
+        if inbound["message_type"] == MessageType.VOICE:
+            await _cache_voice_attachments(inbound)
         source = self.build_source(
             chat_id=sender_id,
             chat_name=f"Messenger {sender_id}",
