@@ -121,7 +121,7 @@ Description=Periodically reconcile Albert's Messenger webhook
 
 [Timer]
 OnBootSec=45s
-OnUnitActiveSec=10min
+OnUnitActiveSec=12h
 RandomizedDelaySec=30s
 Persistent=true
 Unit=${serviceName}
