@@ -2,7 +2,7 @@
 
 import { createDecipheriv, scryptSync } from "node:crypto";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const REPO = resolve(import.meta.dirname, "..");
 const IN = process.env.OPENCLAW_SECRETS_IN ?? join(REPO, "secrets/openclaw-secrets.enc.json");
@@ -42,6 +42,10 @@ const plaintext = Buffer.concat([
 const payload = JSON.parse(plaintext);
 for (const file of payload.files ?? []) {
   const target = file.path;
+  if (basename(target).startsWith(".env")) {
+    console.log(`Skipped legacy env entry ${target}; encrypted env files now come from Git.`);
+    continue;
+  }
   mkdirSync(dirname(target), { recursive: true });
   if (existsSync(target)) {
     const backup = `${target}.backup-${new Date().toISOString().replaceAll(":", "-")}`;

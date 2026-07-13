@@ -23,7 +23,7 @@ managed via `openclaw config set`. This file documents the intended shape.
 
 3. **Set API keys**:
    - Tavily: `openclaw config set plugins.entries.tavily.config.webSearch.apiKey <key>`
-   - OpenRouter: configure in `.env.cognee` (gitignored)
+   - OpenRouter: configure with `dotenvx set` in the tracked encrypted `.env.cognee`
 
 4. **Install plugins**:
    ```bash
@@ -51,5 +51,5 @@ Single agent: **Albert**. No separate belief agent, no coder agent.
 
 - Plugin runtime dependencies (auto-install)
 - Backup files (`.bak`, `.clobbered`, `.rejected`)
-- `.env.cognee` (gitignored — contains API keys)
+- `.env.keys` (never tracked — contains the shared dotenvx private key)
 - `.cognee_system/` and `.cognee_data/` (gitignored — regenerable)

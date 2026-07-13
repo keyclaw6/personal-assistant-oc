@@ -49,7 +49,8 @@ The active runtime contract is the Hermes workspace in
 | `docs/` | Architecture, Cognee setup, Hermes migration, security, integrations. |
 | `openclaw-config/` | Legacy OpenClaw instance config, retained for reference while the branch is validated. |
 | `archive/` | Previous structures (memory-old, memory-wiki-old, belief-system-old, templates-old). Reference only; not indexed. |
-| `.env.cognee`, `.cognee_system/` | Gitignored — config and runtime data. |
+| `.env.cognee` | Dotenvx-encrypted configuration tracked as source of truth. |
+| `.cognee_system/` | Gitignored local runtime data. |
 
 ## Channels
 
@@ -64,7 +65,8 @@ The active runtime contract is the Hermes workspace in
 
 ## Quick start
 
-Requires Node `>=22.14.0`.
+Requires Node `>=22.14.0`, dotenvx, and the shared private key outside Git at
+`~/.config/dotenvx/.env.keys`.
 
 ```bash
 npm run check
@@ -91,10 +93,11 @@ npm run cognee -- start
 
 ## Portable secrets
 
-Plaintext credentials are not committed. The portable path is an encrypted
-bundle at `secrets/openclaw-secrets.enc.json`, which can contain the legacy
-OpenClaw config (`~/.openclaw/openclaw.json`) and local env files such as
-`.env.cognee`.
+Plaintext credentials are not committed. Real env files such as `.env.cognee`
+are encrypted with dotenvx and tracked directly; update them with `dotenvx set`
+without decrypting the worktree. The separate encrypted bundle at
+`secrets/openclaw-secrets.enc.json` is only for non-env machine state such as
+the legacy OpenClaw config (`~/.openclaw/openclaw.json`).
 
 Export from this computer:
 
@@ -117,9 +120,10 @@ not recoverable.
 
 ## Security defaults
 
-- Private GitHub repo. `albert/memory/` is committed; plaintext secrets, tokens,
-  OAuth credentials, `.env.cognee`, and `.cognee_system/` are gitignored.
-  Portable secrets go only in the encrypted bundle above.
+- Private GitHub repo. `albert/memory/` and the dotenvx-encrypted `.env.cognee`
+  are committed; `.env.keys`, plaintext secrets, tokens, OAuth credentials, and
+  `.cognee_system/` stay outside Git. Non-env portable secrets use the encrypted
+  bundle above.
 - Gateway bound to loopback unless a documented remote-access plan exists.
 - External content (emails, attachments, web pages, transcripts, therapy notes,
   external LLM chats) is treated as untrusted input.

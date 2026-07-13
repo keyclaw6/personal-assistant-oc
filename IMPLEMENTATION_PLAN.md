@@ -5,6 +5,10 @@
 > `albert/MEMORY.md`, `albert/TOOLS.md`, `albert/jobs/`, and
 > `albert/methods/`.
 
+> Environment guidance in this historical plan is superseded by `AGENTS.md`:
+> real `.env*` files are tracked only in dotenvx-encrypted form, and the single
+> shared private key stays outside Git.
+
 > Status: APPROVED, PARTIALLY EXECUTED (planning + Messenger plugin commit done).
 > Owner: Kristian Bilstrup.
 > Execution agent: a fresh OpenClaw / Claude Code session, in build mode.
@@ -141,7 +145,7 @@ personal-assistant-oc/
 │   ├── belief-system-old/
 │   └── templates-old/
 │
-├── .env.cognee                       # gitignored
+├── .env.cognee                       # tracked dotenvx-encrypted config
 ├── .cognee_system/                   # gitignored (Cognee runtime data)
 ├── .gitignore
 └── package.json
@@ -343,7 +347,7 @@ openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/a
 ```
 
 ### 3.4 Configure Cognee env (OpenRouter primary path)
-File: `.env.cognee` at repo root, **gitignored**.
+File: `.env.cognee` at repo root, **tracked only in dotenvx-encrypted form**.
 
 ```dotenv
 # LLM via OpenRouter
@@ -567,7 +571,7 @@ Keep:
 
 ### 7.3 Rewrite `scripts/repo-check.mjs`
 New checks:
-- No `.env`, `.env.cognee`, OAuth credential files committed
+- `.env` and `.env.cognee` committed only in dotenvx-encrypted form; no OAuth credential files committed
 - No `node_modules/` or `dist/` committed under `plugins/`
 - `.cognee_system/` is gitignored
 - Top-level identity files (IDENTITY/SOUL/USER/AGENTS/TOOLS/MEMORY/HEARTBEAT/README) are non-empty
@@ -629,4 +633,4 @@ If the agent only ever reflects and agrees, the AGENTS.md rules are not landing.
 - **Do not edit `PHILOSOPHY.md` without explicit approval from Kristian.** If a phase requires changing the philosophy, stop and ask. The whole architecture depends on this file being the stable center.
 - **Do not skip the posture test in Phase 8.2.** Plumbing passing alone is not done. The agent must demonstrate active-interlocutor behaviors or this project has failed even if everything technically works.
 - **Do not migrate content out of `archive/` into `memory/` opportunistically.** The fresh-start posture is deliberate. If Kristian wants something brought forward, he names it specifically.
-- **Do not commit `.env.cognee`, `.cognee_system/`, OAuth tokens, or any other secret.** Verify with `git status` before every commit.
+- **Commit `.env.cognee` only in dotenvx-encrypted form; never commit `.env.keys`, `.cognee_system/`, OAuth tokens, or plaintext secrets.** Verify with `git status` before every commit.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,14 +26,42 @@ def _load_dotenv(path: Path) -> Dict[str, str]:
     values: Dict[str, str] = {}
     if not path.exists():
         return values
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        key, raw = stripped.split("=", 1)
-        value = raw.strip().strip('"').strip("'")
-        values[key.strip()] = value
-        os.environ.setdefault(key.strip(), value)
+
+    raw_text = path.read_text(encoding="utf-8", errors="replace")
+    if "encrypted:" in raw_text:
+        command = [
+            "dotenvx", "get", "--strict", "--format", "json", "--no-armor", "--no-native",
+            "-f", str(path),
+        ]
+        key_file = Path(
+            os.environ.get("DOTENVX_KEY_FILE", "~/.config/dotenvx/.env.keys")
+        ).expanduser()
+        if key_file.is_file():
+            command.extend(["-fk", str(key_file)])
+        try:
+            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            loaded = json.loads(result.stdout)
+        except (FileNotFoundError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                "Encrypted env requires dotenvx and the shared private key outside Git"
+            ) from exc
+        if not isinstance(loaded, dict):
+            raise RuntimeError("dotenvx returned an invalid environment payload")
+        values = {
+            str(key): str(value)
+            for key, value in loaded.items()
+            if not str(key).startswith("DOTENV_PUBLIC_KEY")
+        }
+    else:
+        for line in raw_text.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, raw = stripped.split("=", 1)
+            values[key.strip()] = raw.strip().strip('"').strip("'")
+
+    for key, value in values.items():
+        os.environ.setdefault(key, value)
     return values
 
 

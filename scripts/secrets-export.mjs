@@ -32,13 +32,10 @@ function fileEntry(label, filePath) {
 
 const files = [
   fileEntry("OpenClaw live config", join(homedir(), ".openclaw/openclaw.json")),
-  fileEntry("Cognee env", join(REPO, ".env.cognee")),
-  fileEntry("Repo env", join(REPO, ".env")),
-  fileEntry("Repo local env", join(REPO, ".env.local")),
 ].filter(Boolean);
 
 if (files.length === 0) {
-  throw new Error("No known OpenClaw/Cognee secret files found to export.");
+  throw new Error("No known non-env runtime secret files found to export.");
 }
 
 const payload = JSON.stringify(

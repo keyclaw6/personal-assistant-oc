@@ -12,7 +12,7 @@ openclaw gateway restart
 
 ## Authenticate The Model
 
-The agent uses OpenRouter (DeepSeek V4 Flash). Configure the API key in `.env.cognee` (gitignored). The OpenClaw runtime model config may differ from the Cognee LLM — that's intentional.
+The agent uses OpenRouter (DeepSeek V4 Flash). Configure the API key in the tracked dotenvx-encrypted `.env.cognee` with `dotenvx set`; never commit the private key. The OpenClaw runtime model config may differ from the Cognee LLM — that's intentional.
 
 ## Open Dashboard
 

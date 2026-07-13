@@ -45,8 +45,10 @@ albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Ku
 
 ## Configuration
 
-The Cognee server reads environment variables from `.env.cognee` at the
-repo root (gitignored — contains API keys).
+The Cognee server reads environment variables from the dotenvx-encrypted
+`.env.cognee` at the repo root. The encrypted file is tracked; the shared
+private key stays outside Git at `~/.config/dotenvx/.env.keys`. The server
+script decrypts it only into the child process environment.
 
 Key variables:
 

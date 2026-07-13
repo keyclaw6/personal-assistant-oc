@@ -15,15 +15,18 @@ start() {
     return 0
   fi
 
-  # Load env
-  set -a
-  # shellcheck disable=SC1091
-  source "$REPO_ROOT/.env.cognee"
-  set +a
+  command -v dotenvx >/dev/null 2>&1 || { echo "dotenvx is required" >&2; return 1; }
+  local env_file="$REPO_ROOT/.env.cognee"
+  local key_file="${DOTENVX_KEY_FILE:-$HOME/.config/dotenvx/.env.keys}"
+  local dotenvx_args=(--strict --no-armor --no-native -f "$env_file")
+  [ -f "$key_file" ] && dotenvx_args+=(-fk "$key_file")
 
-  mkdir -p "$SYSTEM_ROOT_DIRECTORY" "$DATA_ROOT_DIRECTORY"
+  local system_root data_root
+  system_root=$(dotenvx get SYSTEM_ROOT_DIRECTORY "${dotenvx_args[@]}")
+  data_root=$(dotenvx get DATA_ROOT_DIRECTORY "${dotenvx_args[@]}")
+  mkdir -p "$system_root" "$data_root"
 
-  nohup "$VENV/bin/python3" -m uvicorn cognee.api.client:app \
+  nohup dotenvx run "${dotenvx_args[@]}" -- "$VENV/bin/python3" -m uvicorn cognee.api.client:app \
     --host 127.0.0.1 --port 8000 --log-level info \
     > "$LOGFILE" 2>&1 &
 

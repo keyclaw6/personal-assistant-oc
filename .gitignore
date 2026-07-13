@@ -1,6 +1,7 @@
 # Local secrets and runtime state
-.env
-.env.*
+# dotenvx private keys stay outside Git; encrypted .env files are tracked.
+.env.keys
+.env.keys.*
 *.local
 *.secret
 *.key
@@ -17,7 +18,6 @@ state/*
 # Cognee runtime state
 .cognee_system/
 .cognee_data/
-.env.cognee
 
 # Dependencies
 node_modules/
