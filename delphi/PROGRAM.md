@@ -1,5 +1,7 @@
 # DELPHI PROGRAM — the loop law (v0.2)
 
+**The goal this law serves lives in [`VISION.md`](VISION.md) — read it first.**
+
 Delphi discovers **leakers** (accounts posting inside information before it is
 public), qualifies them against **historical Polymarket outcomes** (would
 following them have made money at the price offered at post time?), and

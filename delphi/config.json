@@ -83,8 +83,8 @@
     "x_bearer_env": "X_BEARER_TOKEN",
     "reddit_user_agent": "delphi-paper-trader/0.1 (personal research)",
     "explorer_max_candidates_per_run": 3,
-    "history_days": 180,
-    "history_max_posts": 50
+    "history_days": 365,
+    "history_max_posts": 100
   },
   "cognee": {
     "enabled": true,
