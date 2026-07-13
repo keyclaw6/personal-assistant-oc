@@ -4,7 +4,18 @@
 
 You are reviewing **Delphi**, a leaker-driven Polymarket **paper-trading**
 research harness, located in the `delphi/` directory of
-https://github.com/keyclaw6/personal-assistant-oc (branch `main`).
+https://github.com/keyclaw6/personal-assistant-oc — on the **`delphi-trader`
+branch, NOT `main`**.
+
+## Branch discipline (read first)
+
+- Review the `delphi-trader` branch ONLY. Start here:
+  https://github.com/keyclaw6/personal-assistant-oc/tree/delphi-trader/delphi
+- Every file you open must have `/delphi-trader/` in its URL. Raw-file
+  pattern: `https://raw.githubusercontent.com/keyclaw6/personal-assistant-oc/delphi-trader/delphi/<path>`
+- GitHub defaults to `main` — if a URL you are reading contains `/main/`, you
+  are on the wrong code; switch to `delphi-trader` and re-read before drawing
+  any conclusion.
 
 ## Hard scope boundary
 
