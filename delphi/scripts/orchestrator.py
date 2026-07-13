@@ -127,10 +127,10 @@ def apply_amendment(cfg, amd: dict) -> str:
         outcome = f"wrote {rel}"
     elif kind == "config":
         patch = dict(amd.get("patch") or {})
+        _snapshot_config(exp_id, patch)
         ok, msg = config_patch(patch)  # exact allowlist + type/range validation (F7)
         if not ok:
             return f"REJECTED config amendment: {msg}"
-        _snapshot_config(exp_id, patch)
         outcome = f"config {msg}"
     else:
         return f"REJECTED amendment: unknown kind {kind!r}"
@@ -143,30 +143,53 @@ def apply_amendment(cfg, amd: dict) -> str:
     return outcome
 
 
-def _restore(exp_id: str) -> str:
+def _restore(exp_id: str) -> tuple[bool, str]:
     """Round-2 F6: reverts are real AND safe — file restores require the
     current content to still equal the experiment's after-image; config
-    restores replay the saved key/values THROUGH config_patch's allowlist."""
+    restores replay the saved key/values THROUGH config_patch's allowlist.
+    Success is returned only after readback confirms the before-image."""
     d = _exp_dir()
     meta_p = d / f"{exp_id}.json"
     if not meta_p.exists():
-        return f"{exp_id}: no snapshot found — cannot restore"
-    meta = json.loads(meta_p.read_text(encoding="utf-8"))
-    if meta["kind"] == "file":
-        before_p, after_p = d / f"{exp_id}.before", d / f"{exp_id}.after"
-        if not before_p.exists():
-            return f"{exp_id}: no before-image — cannot restore"
-        target = ROOT / meta["path"]
-        current = target.read_text(encoding="utf-8") if target.exists() else ""
-        if after_p.exists() and current != after_p.read_text(encoding="utf-8"):
-            return f"{exp_id}: {meta['path']} changed since experiment — restore SKIPPED"
-        target.write_text(before_p.read_text(encoding="utf-8"), encoding="utf-8")
-        return f"{exp_id}: restored {meta['path']}"
-    patch_before = meta.get("patch_before") or {}
-    if not patch_before:
-        return f"{exp_id}: empty config snapshot — nothing restored"
-    ok, msg = config_patch(patch_before)  # through the allowlist, never around it
-    return f"{exp_id}: config restore {'ok' if ok else 'REJECTED'} ({msg})"
+        return False, f"{exp_id}: no snapshot found — cannot restore"
+    try:
+        meta = json.loads(meta_p.read_text(encoding="utf-8"))
+        if meta["kind"] == "file":
+            before_p, after_p = d / f"{exp_id}.before", d / f"{exp_id}.after"
+            if not before_p.exists():
+                return False, f"{exp_id}: no before-image — cannot restore"
+            target = ROOT / meta["path"]
+            before = before_p.read_text(encoding="utf-8")
+            current = target.read_text(encoding="utf-8") if target.exists() else ""
+            if current == before:  # restore succeeded before a prior status-write crash
+                return True, f"{exp_id}: {meta['path']} already restored"
+            if after_p.exists() and current != after_p.read_text(encoding="utf-8"):
+                return False, f"{exp_id}: {meta['path']} changed since experiment — restore SKIPPED"
+            tmp = target.with_name(target.name + f".{exp_id}.restore.tmp")
+            tmp.write_text(before, encoding="utf-8")
+            tmp.replace(target)
+            restored = target.read_text(encoding="utf-8") if target.exists() else ""
+            if restored != before:
+                return False, f"{exp_id}: {meta['path']} restore readback failed"
+            return True, f"{exp_id}: restored {meta['path']}"
+        if meta.get("kind") != "config":
+            return False, f"{exp_id}: unknown snapshot kind"
+        patch_before = meta.get("patch_before") or {}
+        if not patch_before:
+            return False, f"{exp_id}: empty config snapshot — nothing restored"
+        ok, msg = config_patch(patch_before)  # through the allowlist, never around it
+        if not ok:
+            return False, f"{exp_id}: config restore REJECTED ({msg})"
+        restored_cfg = load_config()
+        for key, expected in patch_before.items():
+            node = restored_cfg
+            for part in key.split("."):
+                node = node[part]
+            if node != expected:
+                return False, f"{exp_id}: config restore readback failed for {key}"
+        return True, f"{exp_id}: config restore ok ({msg})"
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        return False, f"{exp_id}: restore error — {exc}"
 
 
 def review_experiments(reviews: list) -> list[str]:
@@ -184,8 +207,16 @@ def review_experiments(reviews: list) -> list[str]:
             notes.append(f"{eid}:ignored-not-live")
             continue
         restore_msg = ""
+        restored = True
         if verdict == "revert":
-            restore_msg = _restore(eid)
+            restored, restore_msg = _restore(eid)
+            if not restored:
+                notes.append(f"{eid}:revert-error")
+                with open(ROOT / "ledger" / "learnings.md", "a", encoding="utf-8") as f:
+                    f.write(f"| {time.strftime('%Y-%m-%d')} | experiment {eid} revert failed"
+                            f" — {restore_msg} | {str(rv.get('reason', ''))[:160]} | "
+                            f"- | retryable-error |\n")
+                continue
         lines = []
         for line in text.splitlines():
             if line.startswith(f"| {eid} ") and "| live |" in line:

@@ -16,7 +16,7 @@ import os
 import subprocess
 import urllib.request
 
-from lib import extract_json, gen_id, load_config, tmp_dir
+from lib import ROOT, extract_json, gen_id, load_config, tmp_dir
 
 
 def call(role: str, prompt: str, cfg: dict | None = None) -> str:
@@ -51,7 +51,7 @@ def _codex(cfg: dict, r: dict, prompt: str, timeout: int) -> str:
     try:
         proc = subprocess.run(cmd, input=prompt.encode("utf-8"),
                               capture_output=True, timeout=timeout,
-                              cwd=str(ROOT))  # F7: Delphi-only working directory
+                              cwd=str(ROOT))  # Delphi-only working directory
         if outfile.exists():
             text = outfile.read_text(encoding="utf-8", errors="replace")
             outfile.unlink(missing_ok=True)

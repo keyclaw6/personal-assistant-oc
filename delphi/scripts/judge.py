@@ -4,11 +4,11 @@ signals from verified leakers; scripts compute edge and size and open PAPER
 positions.
 
 Review fixes baked in:
-- F8: shares/entry/P&L use the slippage-adjusted FILL price on a side-specific
+- Shares/entry/P&L use the slippage-adjusted FILL price on a side-specific
   quote (NO-side book via its own token when available); the paper account is
   self-financing: equity = bankroll + realized P&L − nothing imaginary.
-- F6: transient market-lookup failure leaves the signal pending (retry);
-  only a confirmed closed market expires it.
+- Deterministic eligibility is checked immediately before judgment and again
+  before a position append. Transient lookup/quote failures remain retryable.
 - Exposure-stacking guard: one open position per market.
 """
 from __future__ import annotations
@@ -43,25 +43,37 @@ def calibration_record(signals: list[dict]) -> str:
                      for cls, v in sorted(agg.items()))
 
 
-def side_quote(market: dict, side: str, fallback_yes: float | None) -> tuple[float | None, bool]:
-    """Indicative side quote for the judge's PROMPT CONTEXT only. The actual
-    fill is re-quoted from the executable book AFTER judgment (round-2 F1)."""
-    q_yes = pm.midpoint(market["yes_token"])
-    if side == "YES":
-        if q_yes is not None:
-            return q_yes, False
-    else:
-        q_no = pm.midpoint(market["no_token"]) if market.get("no_token") else None
-        if q_no is not None:
-            return q_no, False
-        if q_yes is not None:
-            return 1.0 - q_yes, False
-    if market.get("yes_price") is not None:
-        p = market["yes_price"]
-        return (p if side == "YES" else 1.0 - p), True
-    if fallback_yes is not None:
-        return (fallback_yes if side == "YES" else 1.0 - fallback_yes), True
-    return None, True
+def executable_ask(market: dict, side: str) -> float | None:
+    """Current executable ask for the side Delphi would buy."""
+    token = market["yes_token"] if side == "YES" else market.get("no_token", "")
+    ask = pm.best_ask(token) if token else None
+    if ask is None and side == "NO":
+        bid_yes = pm.best_bid(market["yes_token"])
+        ask = 1.0 - bid_yes if bid_yes is not None else None
+    return ask if ask is not None and 0.0 < ask < 1.0 else None
+
+
+def eligibility(signal: dict, leakers: list[dict], positions: list[dict],
+                thresholds: dict) -> tuple[dict | None, float | None, str | None, str]:
+    """Return market/ask when eligible, otherwise terminal status (or None
+    for a transient retry) and an explicit reason."""
+    row = leaker_row(leakers, signal["leaker_id"], signal["call_class"])
+    if not row or row.get("status") != "verified":
+        return None, None, "pass", "leaker class is no longer verified"
+    if any(p.get("status") == "open" and p.get("market_id") == signal["market_id"]
+           for p in positions):
+        return None, None, "pass", "already positioned on this market — stacking guard"
+    market = pm.get_market(signal["market_id"])
+    if market is None:
+        return None, None, None, "market lookup failed — retrying next run"
+    if market["closed"]:
+        return None, None, "expired", "market closed before trade"
+    if float(market.get("liquidity") or 0) < thresholds["min_liquidity_usd"]:
+        return None, None, "pass", "market liquidity fell below minimum"
+    ask = executable_ask(market, signal["side"])
+    if ask is None:
+        return None, None, None, "no fresh executable quote — retrying next run"
+    return market, ask, None, ""
 
 
 def main():
@@ -88,7 +100,6 @@ def main():
     open_cost = sum(float(p.get("size_usd") or 0) for p in positions
                     if p.get("status") == "open")
     available = max(0.0, equity - open_cost)
-    open_markets = {p["market_id"] for p in positions if p.get("status") == "open"}
     calib = calibration_record(signals)
     slippage = th["slippage"]
     n_bet = n_pass = 0
@@ -96,26 +107,12 @@ def main():
     events: list[str] = []
 
     for s in pending:
-        if s["market_id"] in open_markets:
-            s["status"] = "pass"
-            s["note"] = "already positioned on this market — stacking guard"
-            n_pass += 1
-            continue
-        market = pm.get_market(s["market_id"])
-        if market is None:  # F6: transient — stay pending, retry next run
-            s["note"] = "market lookup failed — retrying next run"
-            continue
-        if market["closed"]:
-            s["status"] = "expired"
-            s["note"] = "market closed before judging"
-            continue
-        try:
-            fallback_yes = float(s["price_at_signal"])
-        except (TypeError, ValueError):
-            fallback_yes = None
-        quote_side, stale = side_quote(market, s["side"], fallback_yes)
-        if quote_side is None or not 0.0 < quote_side < 1.0:
-            s["note"] = "no usable quote — retrying next run"
+        market, quote_side, terminal, reason = eligibility(s, leakers, positions, th)
+        if market is None:
+            s["note"] = reason
+            if terminal:
+                s["status"] = terminal
+                n_pass += terminal == "pass"
             continue
         quote_yes_disp = quote_side if s["side"] == "YES" else 1.0 - quote_side
 
@@ -135,7 +132,6 @@ def main():
                   + f"\nresolution criteria: {market['description']}"
                   + f"\nend date: {market['end_date']}"
                   + f"\ncurrent YES price: {quote_yes_disp:.3f}"
-                  + (" (stale fallback quote)" if stale else "")
                   + f" | liquidity: {market['liquidity']:.0f} USD"
                   + f"\n\n## LEAKER POST\nleaker: {s['leaker_id']} (hedged: {s['hedged']})"
                   + f"\nposted: {s['post_ts']} | detected: {s['ts_detected']}"
@@ -166,16 +162,18 @@ def main():
         p_yes = min(0.99, max(0.01, p_yes))
         lessons_all += j.get("lessons") or []
 
-        # F1 (round 2): fetch a FRESH EXECUTABLE ask for the token we would
-        # actually buy, AFTER the (slow) judgment — never a stale midpoint.
-        buy_token = market["yes_token"] if s["side"] == "YES" else market.get("no_token", "")
-        ask = pm.best_ask(buy_token) if buy_token else None
-        if ask is None and s["side"] == "NO":
-            bid_yes = pm.best_bid(market["yes_token"])
-            ask = (1.0 - bid_yes) if bid_yes is not None else None
-        if ask is None:
-            s["note"] = "no fresh executable quote — retrying next run"
-            continue  # stays pending
+        # Re-read script-owned state and re-fetch both market and ask after the
+        # slow judgment. No predicate from the pre-judgment check is trusted.
+        current_leakers = read_tsv(ddir / "leakers.tsv")
+        current_positions = read_tsv(ddir / "positions.tsv")
+        market, ask, terminal, reason = eligibility(
+            s, current_leakers, current_positions, th)
+        if market is None:
+            s["note"] = reason
+            if terminal:
+                s["status"] = terminal
+                n_pass += terminal == "pass"
+            continue
 
         p_side, _ = side_values(s["side"], p_yes, 0.5)
         fill = min(0.99, ask + slippage)  # executable ask + conservative buffer
@@ -199,8 +197,8 @@ def main():
                     "judge_p": f"{p_yes:.3f}", "status": "open", "note": rationale,
                 }
                 append_tsv(ddir / "positions.tsv", pos)
+                positions.append(pos)
                 available -= size
-                open_markets.add(s["market_id"])
                 s["status"] = "bet"
                 s["note"] = rationale
                 n_bet += 1

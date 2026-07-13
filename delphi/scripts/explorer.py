@@ -20,11 +20,78 @@ import cognee
 import polymarket as pm
 from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
                  ensure_leaker_row, gen_id, iso_to_unix, kickstart_active,
-                 leaker_row, load_config, log_result, normalize_class, now_iso,
+                 load_config, log_result, normalize_class, now_iso,
                  read_tsv, unix_to_iso, update_leaker_stats, write_note,
                  write_tsv)
 from llm import call_json
 from sources import fetch_posts, reddit_sub_new
+
+
+EXTRACTION_POST_CHUNK_SIZE = 20
+MAPPING_CLAIM_CHUNK_SIZE = 20
+
+
+def _chunks(items: list, size: int):
+    for start in range(0, len(items), size):
+        yield items[start:start + size]
+
+
+def _parse_index(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _canonical_claims(posts: list[dict], raw_claims, allowed_indices: set[int]) -> list[dict]:
+    """Copy source provenance onto claims and reject indices not in this chunk."""
+    claims = []
+    for raw in raw_claims or []:
+        try:
+            post_index = _parse_index(raw["post_index"])
+        except (KeyError, TypeError):
+            continue
+        if (post_index is None or post_index < 0 or post_index >= len(posts)
+                or post_index not in allowed_indices):
+            continue
+        if not str(raw.get("claim", "")).strip():
+            continue
+        claim = dict(raw)
+        claim["post_index"] = post_index
+        claim["post_ts"] = posts[post_index]["ts"]
+        claim["post_url"] = posts[post_index]["url"]
+        claims.append(claim)
+    return claims
+
+
+def _accepted_mappings(raw_mappings, allowed_pairs: list[tuple[int, str]]):
+    """Return first matched candidate per claim, or None until every pair is answered."""
+    allowed = set(allowed_pairs)
+    addressed: set[tuple[int, str]] = set()
+    matched: dict[tuple[int, str], dict] = {}
+    for raw in raw_mappings or []:
+        try:
+            claim_index = _parse_index(raw["claim_index"])
+            if claim_index is None:
+                continue
+            pair = (claim_index, str(raw["market_id"]))
+        except (KeyError, TypeError):
+            continue
+        if pair not in allowed:
+            continue
+        addressed.add(pair)
+        if raw.get("match"):
+            matched.setdefault(pair, raw)
+    if addressed != allowed:
+        return None
+    best_by_claim: dict[int, dict] = {}
+    for pair in allowed_pairs:
+        if pair in matched and pair[0] not in best_by_claim:
+            best_by_claim[pair[0]] = matched[pair]
+    return best_by_claim
 
 
 def sweep_subs(brief: str) -> list[str]:
@@ -65,8 +132,8 @@ def propose_candidates(cfg, ctx, domain, brief, leakers, candidates) -> int:
 
 
 def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
-            posts_limit, start_iso, end_iso=None) -> str:
-    """Qualify one candidate/leaker from one history window."""
+            posts_limit, start_iso, end_iso=None) -> tuple[str, bool]:
+    """Qualify a complete bounded history; bool reports terminal completion."""
     th = cfg["thresholds"]
     ddir = domain_dir(domain)
     platform, handle = cand["platform"], cand["handle"]
@@ -74,91 +141,81 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
     base = {"leaker_id": leaker_id, "platform": platform, "handle": handle,
             "domain": domain, "call_class": "-", "status": "candidate",
             "n_calls": 0, "hits": 0, "notes": cand.get("rationale", "")}
-    if not leaker_row(leakers, leaker_id, "-"):
-        row = {c: "" for c in ("leaker_id platform handle domain call_class status "
-                               "n_calls hits hit_rate avg_price_at_call est_edge "
-                               "edge_lcb n_unpriced last_seen_ts notes").split()}
-        row.update(base)
-        leakers.append(row)
 
     posts = fetch_posts(platform, handle, since_iso=start_iso,
                         limit=posts_limit, cfg=cfg, end_iso=end_iso)
     if not posts:
-        return f"{handle}: no history fetched in window"
+        return f"{handle}: no history fetched in bounded window — retry next run", False
+    posts = sorted(posts, key=lambda p: (p.get("ts") or "9999", p.get("url") or ""))
 
     prompt_t = (ROOT / "prompts" / "explorer.md").read_text(encoding="utf-8")
-    # F4 (round 2): posts get stable indices; scripts copy provenance from the
-    # indexed source post — LLM-echoed timestamps/URLs are never trusted.
-    post_block = "\n".join(f"- post_index {i} | [{p['ts']}] {p['url']}\n  {p['text'][:400]}"
-                           for i, p in enumerate(posts))
-    prompt = (ctx + "\n\n" + prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
-              + f"\n\n## CANDIDATE\n{platform}/{handle}"
-              + "\n\n## POST HISTORY\n" + post_block
-              + "\n\n## REQUEST\nPerform Task B now. JSON only.")
-    j = call_json("explorer", prompt, cfg)
-    if j is None or not isinstance(j.get("claims"), list):
-        return f"{handle}: extraction unparseable — retry next run (F4)"
-    append_lessons("explorer", j.get("lessons"))
-    # F2 (round 2): NO LLM checkable-gate — every falsifiable claim goes to the
-    # deterministic resolved-market lookup, which decides scoreability.
     claims = []
-    for c in j.get("claims", []):
-        try:
-            p = posts[int(c["post_index"])]
-        except (KeyError, ValueError, TypeError, IndexError):
-            continue  # no verifiable provenance → claim dropped
-        if not str(c.get("claim", "")).strip():
-            continue
-        c["post_ts"], c["post_url"] = p["ts"], p["url"]  # canonical provenance
-        claims.append(c)
-    claims = claims[:40]
+    indexed_posts = list(enumerate(posts))
+    for post_chunk in _chunks(indexed_posts, EXTRACTION_POST_CHUNK_SIZE):
+        post_block = "\n".join(
+            f"- post_index {i} | [{p['ts']}] {p['url']}\n  {p['text'][:400]}"
+            for i, p in post_chunk)
+        prompt = (ctx + "\n\n" + prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
+                  + f"\n\n## CANDIDATE\n{platform}/{handle}"
+                  + "\n\n## POST HISTORY CHUNK\n" + post_block
+                  + "\n\n## REQUEST\nPerform Task B now. JSON only.")
+        j = call_json("explorer", prompt, cfg)
+        if not isinstance(j, dict) or not isinstance(j.get("claims"), list):
+            return f"{handle}: extraction chunk unparseable — retry next run", False
+        append_lessons("explorer", j.get("lessons"))
+        claims.extend(_canonical_claims(posts, j["claims"], {i for i, _ in post_chunk}))
+    claims.sort(key=lambda c: (c["post_ts"], c["post_url"], c["post_index"]))
     if not claims:
-        return f"{handle}: 0 usable claims in {len(posts)} posts"
+        return f"{handle}: 0 usable claims in {len(posts)} posts", True
 
-    pairs, market_by_id, search_failed = [], {}, 0
+    pairs: list[tuple[int, dict]] = []
+    market_by_pair: dict[tuple[int, str], dict] = {}
+    search_failed = 0
     for i, c in enumerate(claims):
         found = pm.search_markets(str(c.get("market_query", ""))[:80], closed=True, limit=3)
-        if found is None:  # transient API failure — this claim stays retryable (F6)
+        if found is None:
             search_failed += 1
             continue
         for m in found:
-            market_by_id[m["id"]] = m
-            pairs.append((i, m))
+            pair = (i, str(m["id"]))
+            if pair not in market_by_pair:
+                market_by_pair[pair] = m
+                pairs.append((i, m))
+    if search_failed:
+        return (f"{handle}: {len(claims)} claims; {search_failed} market searches "
+                "failed transiently — retry next run", False)
     if not pairs:
-        return (f"{handle}: {len(claims)} claims, 0 resolved-market candidates"
-                + (f" ({search_failed} searches failed transiently)" if search_failed else ""))
+        return f"{handle}: {len(claims)} claims, 0 resolved-market candidates", True
 
-    map_block = "\n".join(
-        f"- claim_index {i} | market_id {m['id']} | {m['question']} | criteria: {m['description'][:200]}"
-        for i, m in pairs)
-    claim_block = "\n".join(f"- [{i}] {c['claim']}" for i, c in enumerate(claims))
-    prompt = (ctx + "\n\n" + prompt_t + "\n\n## CLAIMS\n" + claim_block
-              + "\n\n## CANDIDATE (claim, market) PAIRS\n" + map_block
-              + "\n\n## REQUEST\nPerform Task C now. JSON only.")
-    j = call_json("explorer", prompt, cfg) or {}
-
-    # F2: keep only the FIRST match per claim — one market per claim.
     best_by_claim: dict[int, dict] = {}
-    for mp in (j.get("mappings") or []):
-        if not mp.get("match"):
-            continue
-        try:
-            ci = int(mp["claim_index"])
-        except (KeyError, ValueError, TypeError):
-            continue
-        if 0 <= ci < len(claims) and ci not in best_by_claim:
-            best_by_claim[ci] = mp
+    claim_indices = sorted({i for i, _ in pairs})
+    for claim_chunk in _chunks(claim_indices, MAPPING_CLAIM_CHUNK_SIZE):
+        chunk_set = set(claim_chunk)
+        chunk_pairs = [(i, m) for i, m in pairs if i in chunk_set]
+        allowed_pairs = [(i, str(m["id"])) for i, m in chunk_pairs]
+        map_block = "\n".join(
+            f"- claim_index {i} | market_id {m['id']} | {m['question']} | "
+            f"criteria: {m['description'][:200]}" for i, m in chunk_pairs)
+        claim_block = "\n".join(f"- [{i}] {claims[i]['claim']}" for i in claim_chunk)
+        prompt = (ctx + "\n\n" + prompt_t + "\n\n## CLAIMS\n" + claim_block
+                  + "\n\n## CANDIDATE (claim, market) PAIRS\n" + map_block
+                  + "\n\n## REQUEST\nPerform Task C now. JSON only.")
+        j = call_json("explorer", prompt, cfg)
+        if not isinstance(j, dict) or not isinstance(j.get("mappings"), list):
+            return f"{handle}: mapping chunk unparseable — retry next run", False
+        accepted = _accepted_mappings(j["mappings"], allowed_pairs)
+        if accepted is None:
+            return f"{handle}: mapping chunk incomplete — retry next run", False
+        best_by_claim.update(accepted)
 
-    # F3 (round 2): deterministic EARLIEST-POST-FIRST scoring order, so the
-    # origination call takes the (leaker, event) credit — not whatever order
-    # the LLM listed, and not a later correction.
     ordered = sorted(best_by_claim.items(),
-                     key=lambda kv: claims[kv[0]].get("post_ts") or "9999")
+                     key=lambda kv: (claims[kv[0]]["post_ts"],
+                                     claims[kv[0]]["post_url"], kv[0]))
 
     scored = unpriced = verified = skipped_dupe = 0
     for ci, mp in ordered:
         claim = claims[ci]
-        market = market_by_id.get(str(mp.get("market_id", "")))
+        market = market_by_pair.get((ci, str(mp.get("market_id", ""))))
         side = str(mp.get("implied_side", "")).upper()
         if not market or side not in ("YES", "NO"):
             continue
@@ -202,7 +259,7 @@ def qualify(cfg, ctx, domain, brief, leakers, cand, counted_pairs,
             verified += 1
     return (f"{handle}: {len(claims)} claims → {scored} priced calls scored, "
             f"{unpriced} unpriced (audit-only), {skipped_dupe} dupes blocked, "
-            f"{verified} verified classes")
+            f"{verified} verified classes", True)
 
 
 def deepen_targets(leakers: list[dict], cap: int) -> list[dict]:
@@ -257,25 +314,28 @@ def main():
     queue = queue[:candidate_cap(cfg)]
     mode = "qualify"
 
-    if not queue:  # deepen: OLDER window, more posts
+    if not queue:  # re-scan the same bounded year for deeper source coverage
         targets = deepen_targets(leakers, 2 if kickstart_active(cfg) else 1)
         for t in targets:
-            t.update({"_start": unix_to_iso(now_unix - 2 * src["history_days"] * 86400),
-                      "_end": std_start, "_limit": src["history_max_posts"] * 2})
+            t.update({"_start": std_start, "_end": None,
+                      "_limit": src["history_max_posts"]})
         queue = targets
         mode = "deepen:" + ",".join(t["handle"] for t in targets) if targets else "idle"
 
     summaries = []
     for cand in queue:
+        completed = False
         try:
-            summaries.append(qualify(cfg, ctx, args.domain, brief, leakers, cand,
-                                     counted_pairs, cand["_limit"],
-                                     cand["_start"], cand["_end"]))
+            result, completed = qualify(cfg, ctx, args.domain, brief, leakers, cand,
+                                        counted_pairs, cand["_limit"],
+                                        cand["_start"], cand["_end"])
+            summaries.append(result)
         except Exception as e:  # noqa: BLE001 — skip-and-log boundary (§7)
             summaries.append(f"{cand.get('handle')}: FAILED {e}")
-        for c in candidates:
-            if c.get("handle") == cand.get("handle") and c.get("status") == "new":
-                c["status"] = "checked"
+        if completed:
+            for c in candidates:
+                if c.get("handle") == cand.get("handle") and c.get("status") == "new":
+                    c["status"] = "checked"
     write_tsv(ddir / "candidates.tsv", candidates)
     write_tsv(ddir / "leakers.tsv", leakers)
 

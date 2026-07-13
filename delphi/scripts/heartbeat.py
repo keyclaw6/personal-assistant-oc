@@ -3,13 +3,10 @@
 posts, extract claims, match to OPEN Polymarket markets, log signal rows with
 the price at detection. Probation signals are tracked, never bet.
 
-Round-2 review fixes baked in:
-- F5: posts are processed OLDEST-FIRST with a per-post atomic commit — the
-  cursor advances only through posts whose claims ALL reached a terminal row,
-  so backlogs drain across sweeps and no sibling claim is ever dropped.
-- F4: strict output structure ("claims" list required, else retry); post
-  provenance (ts/url) is copied from the indexed source post, never trusted
-  from LLM echo.
+Posts are processed OLDEST-FIRST with a per-post atomic commit. Every terminal
+claim row and a post-completion marker enter signals.tsv in the same rewrite;
+that marker is the compound (timestamp + stable post id) cursor. A crash can
+therefore retry a post, but can never advance past uncommitted sibling claims.
 """
 from __future__ import annotations
 
@@ -18,14 +15,15 @@ import time
 
 import cognee
 import polymarket as pm
-from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
+from lib import (ROOT, agent_context, append_lessons, domain_dir,
                  gen_id, iso_to_unix, load_config, log_result, normalize_class,
                  now_iso, read_tsv, unix_to_iso, write_note, write_tsv)
 from llm import call_json
 from sources import fetch_posts
 
 MAX_POSTS_PER_SWEEP = 15   # backlog drains at this rate per 10-min sweep
-MAX_CLAIMS_PER_POST = 4
+POST_COMPLETE = "post_complete"
+POST_ID_PREFIX = "post_id="
 
 
 def sweep_roster(leakers: list[dict]) -> list[dict]:
@@ -70,6 +68,53 @@ def build_claim_row(domain, lk, post, c, cls):
     }
 
 
+def post_id(post: dict) -> str:
+    return str(post.get("id") or post.get("url") or "").strip()
+
+
+def post_key(post: dict) -> tuple[str, str]:
+    return str(post.get("ts") or ""), post_id(post)
+
+
+def marker_post_id(row: dict) -> str:
+    note = str(row.get("note") or "")
+    return note[len(POST_ID_PREFIX):] if note.startswith(POST_ID_PREFIX) else ""
+
+
+def watermark(signals: list[dict], leakers: list[dict], leaker_id: str) -> tuple[str, str]:
+    """Latest atomically-completed post, with legacy timestamp fallback."""
+    markers = [(r.get("post_ts") or "", marker_post_id(r) or r.get("post_url") or "")
+               for r in signals
+               if r.get("leaker_id") == leaker_id and r.get("status") == POST_COMPLETE]
+    if markers:
+        return max(markers)
+    legacy = []
+    for row in leakers:
+        if row.get("leaker_id") != leaker_id:
+            continue
+        ts, _, pid = str(row.get("last_seen_ts") or "").partition("|")
+        if ts:
+            legacy.append((ts, pid))
+    return max(legacy, default=("", ""))
+
+
+def build_completion_row(domain: str, lk: dict, post: dict) -> dict:
+    return {
+        "signal_id": gen_id("seen"), "ts_detected": now_iso(),
+        "domain": domain, "leaker_id": lk["leaker_id"],
+        "platform": lk["platform"], "post_url": post["url"],
+        "post_ts": post["ts"], "claim": "", "call_class": "-",
+        "hedged": "false", "status": POST_COMPLETE,
+        "resolved_outcome": "", "stat_counted": "",
+        "note": POST_ID_PREFIX + post_id(post),
+    }
+
+
+def claim_key(row: dict) -> tuple[str, str, str]:
+    claim = " ".join(str(row.get("claim") or "").lower().split())
+    return str(row.get("platform") or ""), str(row.get("post_url") or ""), claim
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", default="ai-releases")
@@ -82,8 +127,13 @@ def main():
     ctx = agent_context("heartbeat", max_notes=0)
     prompt_t = (ROOT / "prompts" / "heartbeat.md").read_text(encoding="utf-8")
     leakers = read_tsv(ddir / "leakers.tsv")
-    signals = read_tsv(ddir / "signals.tsv")
-    known_posts = {s["post_url"] for s in signals}
+    signals_path = ddir / "signals.tsv"
+    signals = read_tsv(signals_path)
+    # Historical back-test rows never suppress prospective claims. Exact claim
+    # keys only protect a crash retry; distinct claims on one URL remain valid.
+    known_claims = {claim_key(s) for s in signals
+                    if s.get("status") not in ("historical", POST_COMPLETE)
+                    and str(s.get("claim") or "").strip()}
 
     roster = sweep_roster(leakers)
     if not roster:
@@ -96,18 +146,19 @@ def main():
     lessons_all: list[str] = []
     events: list[str] = []
     for lk in roster:
-        since = max((r.get("last_seen_ts") or "" for r in leakers
-                     if r["leaker_id"] == lk["leaker_id"]), default="")
-        if not since:
-            since = unix_to_iso(iso_to_unix(now_iso()) - 86400)
+        cursor = watermark(signals, leakers, lk["leaker_id"])
+        since = cursor[0] or unix_to_iso(iso_to_unix(now_iso()) - 86400)
         try:
-            fetched = [p for p in fetch_posts(lk["platform"], lk["handle"], since, 50, cfg)
-                       if p["url"] not in known_posts and p["ts"] > since]
+            fetched = fetch_posts(lk["platform"], lk["handle"], since,
+                                  MAX_POSTS_PER_SWEEP, cfg,
+                                  oldest_first=True, after_id=cursor[1])
         except Exception as e:  # noqa: BLE001
             print(f"  [heartbeat] fetch {lk['handle']}: {e}")
             continue
-        # F5: OLDEST-FIRST, bounded batch — leftovers stay beyond the cursor
-        posts = sorted(fetched, key=lambda p: p["ts"])[:MAX_POSTS_PER_SWEEP]
+        # Compound ordering handles multiple posts with the same timestamp. The
+        # source guarantees this is a complete oldest prefix or returns [].
+        posts = sorted((p for p in fetched if post_key(p) > cursor), key=post_key)
+        posts = posts[:MAX_POSTS_PER_SWEEP]
         if not posts:
             continue
         n_posts += len(posts)
@@ -138,15 +189,18 @@ def main():
             if 0 <= pi < len(posts) and str(c.get("claim", "")).strip():
                 claims_by_post.setdefault(pi, []).append(c)
 
-        # F5: per-post atomic commit, cursor advances through committed posts only.
-        committed_ts = ""
+        # Per-post transaction: all terminal claims + completion marker in ONE
+        # atomic rewrite. No marker exists for a deferred/partially-built post.
         for pi, post in enumerate(posts):
-            group = claims_by_post.get(pi, [])[:MAX_CLAIMS_PER_POST]
+            group = claims_by_post.get(pi, [])
             rows, deferred = [], False
+            post_claims = set(known_claims)
             for c in group:
                 cls = normalize_class(c.get("call_class", ""), cfg, args.domain)
                 sig = build_claim_row(args.domain, lk, post, c, cls)
-                n_claims += 1
+                key = claim_key(sig)
+                if key in post_claims:
+                    continue
                 markets = pm.search_markets(str(c.get("market_query", ""))[:80],
                                             closed=False, limit=5)
                 if markets is None:  # transient API failure → defer whole post
@@ -193,12 +247,16 @@ def main():
                         "note": "" if liq_ok else "below min liquidity",
                     })
                 rows.append(sig)
+                post_claims.add(key)
             if deferred:  # nothing from this post is committed; retry next sweep
                 n_deferred += 1
                 break  # posts after this one stay beyond the cursor too
+            committed = rows + [build_completion_row(args.domain, lk, post)]
+            write_tsv(signals_path, signals + committed)
+            signals.extend(committed)
             for sig in rows:
-                append_tsv(ddir / "signals.tsv", sig)
-                known_posts.add(sig["post_url"])
+                known_claims.add(claim_key(sig))
+                n_claims += 1
                 events.append(f"{lk['handle']}: {sig['claim'][:90]} → {sig['status']}")
                 if sig["status"] == "pending_judge":
                     n_pending += 1
@@ -206,14 +264,7 @@ def main():
                     n_tracked += 1
                 elif sig["status"] == "no_market":
                     n_nomarket += 1
-            committed_ts = post["ts"]
 
-        if committed_ts:
-            for r in leakers:
-                if r["leaker_id"] == lk["leaker_id"] and committed_ts > (r.get("last_seen_ts") or ""):
-                    r["last_seen_ts"] = committed_ts
-
-    write_tsv(ddir / "leakers.tsv", leakers)
     append_lessons("heartbeat", lessons_all)
     if events:
         note = "Signals this sweep:\n- " + "\n- ".join(events)

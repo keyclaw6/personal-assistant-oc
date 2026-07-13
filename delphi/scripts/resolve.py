@@ -3,13 +3,15 @@
 and fold resolved signals into per-leaker per-call-class stats.
 
 Review fixes baked in:
-- F4: idempotent — a position already present in resolved.tsv is never paid
+- A position already present in resolved.tsv is never paid
   again, even after a crash between append and status persistence.
-- F6: `expired` (and stale pending_judge on closed markets) signals ARE folded
+- `expired` (and stale pending_judge on closed markets) signals ARE folded
   — fast-resolving calls are not selectively omitted.
-- F2: at most ONE fold per (leaker, market) pair, earliest post wins; the
+- At most ONE fold per (leaker, event) pair, earliest post wins; the
   chosen row is marked stat_counted=true, duplicates false.
-- F8: P&L uses recorded shares bought at the slippage-adjusted fill.
+- Scorecards are deterministic projections of the signal ledger and are
+  rebuilt every run, so a crash between signal and leaker persistence heals.
+- P&L uses recorded shares bought at the slippage-adjusted fill.
 """
 from __future__ import annotations
 
@@ -20,6 +22,71 @@ import polymarket as pm
 from lib import (append_tsv, domain_dir, ensure_leaker_row, load_config,
                  log_result, now_iso, read_tsv, side_values, update_leaker_stats,
                  write_tsv)
+
+
+STAT_FIELDS = ("n_calls", "hits", "hit_rate", "avg_price_at_call", "est_edge",
+               "edge_lcb", "n_unpriced", "n_live")
+
+
+def rebuild_leaker_stats(signals: list[dict], leakers: list[dict], thresholds: dict,
+                         domain: str) -> tuple[bool, list[str]]:
+    """Reconcile scorecards from resolved signal rows, deterministically.
+
+    Signals are the durable source of truth. Persisting them before this
+    projection means an interrupted run is repaired by the next resolve pass,
+    without a second journal or an ambiguous "fold applied" marker.
+    """
+    before = {(r.get("leaker_id"), r.get("call_class")):
+              tuple(str(r.get(k, "")) for k in ("status",) + STAT_FIELDS)
+              for r in leakers}
+    prior_status = {key: values[0] for key, values in before.items()}
+
+    for row in leakers:
+        if row.get("call_class") == "-":
+            continue
+        retired = row.get("status") == "retired"
+        row.update({"n_calls": 0, "hits": 0, "hit_rate": "",
+                    "avg_price_at_call": "", "est_edge": "", "edge_lcb": "",
+                    "n_unpriced": 0, "n_live": 0,
+                    "status": "retired" if retired else "candidate"})
+
+    resolved = [s for s in signals
+                if s.get("resolved_outcome") in ("YES", "NO")
+                and s.get("side") in ("YES", "NO")
+                and s.get("market_id")]
+    resolved.sort(key=lambda s: (s.get("post_ts") or s.get("ts_detected") or "9999",
+                                 s.get("signal_id") or ""))
+    counted_pairs: set[tuple[str, str]] = set()
+    for s in resolved:
+        pair = (s["leaker_id"], s.get("event_id") or s["market_id"])
+        if pair in counted_pairs:
+            s["stat_counted"] = "false"
+            marker = "duplicate call on event — not scored"
+            if marker not in s.get("note", ""):
+                s["note"] = (s.get("note", "") + " " + marker).strip()
+            continue
+        counted_pairs.add(pair)
+        try:
+            price_yes = float(s["price_at_signal"])
+            _, price_side = side_values(s["side"], 0.5, price_yes)
+        except (TypeError, ValueError):
+            price_side = None
+        base = {"leaker_id": s["leaker_id"], "platform": s.get("platform", ""),
+                "handle": s["leaker_id"].split("-", 1)[-1], "domain": domain,
+                "call_class": s["call_class"], "status": "candidate",
+                "n_calls": 0, "hits": 0, "notes": ""}
+        row = ensure_leaker_row(leakers, base, s["call_class"])
+        update_leaker_stats(row, s["side"] == s["resolved_outcome"], price_side,
+                            thresholds, live=s.get("status") != "historical")
+        s["stat_counted"] = "true" if price_side is not None else "false"
+
+    after = {(r.get("leaker_id"), r.get("call_class")):
+             tuple(str(r.get(k, "")) for k in ("status",) + STAT_FIELDS)
+             for r in leakers}
+    promotions = [f"{lid}/{cls}" for (lid, cls), values in after.items()
+                  if values[0] == "verified"
+                  and prior_status.get((lid, cls)) != "verified"]
+    return before != after, promotions
 
 
 def main():
@@ -104,45 +171,22 @@ def main():
         if s["side"] in ("YES", "NO"):
             newly_resolved.append(s)
 
-    # 3) fold with one credit per (leaker, EVENT), earliest post wins (F2/F3)
-    counted_pairs = {(x["leaker_id"], x.get("event_id") or x["market_id"])
-                     for x in signals
-                     if x.get("stat_counted") == "true" or x["status"] == "historical"}
-    n_scored = 0
-    promotions = []
-    newly_resolved.sort(key=lambda x: x.get("post_ts") or x["ts_detected"])
-    for s in newly_resolved:
-        pair = (s["leaker_id"], s.get("event_id") or s["market_id"])
-        if pair in counted_pairs:
-            s["stat_counted"] = "false"
-            s["note"] = (s.get("note", "") + " duplicate call on event — not scored (F2)").strip()
-            continue
-        hit = (s["side"] == s["resolved_outcome"])
-        try:
-            price_yes = float(s["price_at_signal"])
-            _, price_side = side_values(s["side"], 0.5, price_yes)
-        except (TypeError, ValueError):
-            price_side = None  # audit-only fold → n_unpriced (F1)
-        base = {"leaker_id": s["leaker_id"], "platform": s["platform"],
-                "handle": s["leaker_id"].split("-", 1)[-1], "domain": args.domain,
-                "call_class": s["call_class"], "status": "candidate",
-                "n_calls": 0, "hits": 0, "notes": ""}
-        row = ensure_leaker_row(leakers, base, s["call_class"])
-        before = row.get("status")
-        update_leaker_stats(row, hit, price_side, th, live=True)  # prospective fold
-        s["stat_counted"] = "true" if price_side is not None else "false"
-        counted_pairs.add(pair)
-        if before != "verified" and row["status"] == "verified":
-            promotions.append(f"{s['leaker_id']}/{s['call_class']}")
-            cognee.add(f"Leaker promoted to verified: {s['leaker_id']} on {s['call_class']} "
-                       f"(hit_rate {row['hit_rate']}, edge_lcb {row['edge_lcb']}, "
-                       f"n={row['n_calls']})", meta="promotion")
-        n_scored += 1
-
+    # 3) Every run reconciles the complete projection. Signals persist first:
+    # if the following leaker write is interrupted, the next run replays it.
+    aggregates_changed, promotions = rebuild_leaker_stats(
+        signals, leakers, th, args.domain)
     write_tsv(ddir / "signals.tsv", signals)
     write_tsv(ddir / "leakers.tsv", leakers)
+    for promoted in promotions:
+        lid, cls = promoted.rsplit("/", 1)
+        row = next(r for r in leakers
+                   if r["leaker_id"] == lid and r["call_class"] == cls)
+        cognee.add(f"Leaker promoted to verified: {lid} on {cls} "
+                   f"(hit_rate {row['hit_rate']}, edge_lcb {row['edge_lcb']}, "
+                   f"n={row['n_calls']})", meta="promotion")
 
-    if n_closed or n_scored:
+    n_scored = len(newly_resolved)
+    if n_closed or n_scored or aggregates_changed:
         cognee.cognify()  # refresh the delphi dataset graph — never per-heartbeat
 
     resolved_all = read_tsv(ddir / "resolved.tsv")
