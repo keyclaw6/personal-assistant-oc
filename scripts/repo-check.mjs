@@ -4,7 +4,7 @@
  *
  * Checks:
  * 1. No secrets or credentials committed.
- * 2. No .env files committed (except .env.template).
+ * 2. Tracked real .env files are fully dotenvx-encrypted; private keys are absent.
  * 3. No node_modules/ or dist/ committed under plugins/.
  * 4. .cognee_system/ and .cognee_data/ are gitignored.
  * 5. Albert runtime prompt files are non-empty.
@@ -51,11 +51,29 @@ function isGitignored(pattern) {
 const errors = [];
 const files = trackedFiles();
 
-// 1. No .env files committed
+// 1. Real .env files are encrypted; dotenvx private keys are never tracked.
 for (const f of files) {
   const base = path.basename(f);
-  if (/^\.env(\..*)?$/.test(base) && base !== ".env.template") {
-    errors.push(`${f}: .env file should not be committed`);
+  if (base === ".env.keys" || base.startsWith(".env.keys.")) {
+    errors.push(`${f}: dotenvx private key file must not be committed`);
+    continue;
+  }
+  if (!/^\.env(?:\..*)?$/.test(base) || base.endsWith(".example") || base.endsWith(".template")) {
+    continue;
+  }
+  const content = read(f);
+  if (!/^DOTENV_PUBLIC_KEY=/m.test(content)) {
+    errors.push(`${f}: tracked env is missing DOTENV_PUBLIC_KEY`);
+  }
+  for (const line of content.split("\n")) {
+    const stripped = line.trim();
+    if (!stripped || stripped.startsWith("#") || !stripped.includes("=")) continue;
+    const [key, ...rest] = stripped.split("=");
+    if (key.startsWith("DOTENV_PUBLIC_KEY")) continue;
+    const value = rest.join("=").trim().replace(/^["']|["']$/g, "");
+    if (!value.startsWith("encrypted:")) {
+      errors.push(`${f}: ${key} is not dotenvx-encrypted`);
+    }
   }
 }
 
@@ -152,6 +170,7 @@ const secretPatterns = [
   { name: "Anthropic-style secret", pattern: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/ },
   { name: "GitHub token", pattern: /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/ },
   { name: "Private key block", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
+  { name: "dotenvx private key", pattern: /^DOTENV_PRIVATE_KEY(?:_[A-Z0-9_]+)?=["']?[0-9a-f]{64}/m },
 ];
 
 const textExts = new Set([".md", ".json", ".mjs", ".js", ".ts", ".yaml", ".yml", ".txt", ".gitignore"]);

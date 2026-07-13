@@ -16,7 +16,7 @@
 - **Embeddings (primary):** OpenRouter embedding model.
 - **Embeddings (fallback):** Ollama + `nomic-embed-text` local
   (`http://localhost:11434`).
-- Config lives in `.env.cognee` at repo root (gitignored).
+- Config lives in the tracked dotenvx-encrypted `.env.cognee`; the private key stays outside Git.
 
 ## Memory plugin
 
@@ -72,9 +72,9 @@ Expected:
 
 ## Secrets
 
-Do not commit: API keys, tokens, passwords, cookies, private SSH keys,
-Hermes/OpenClaw runtime config, `.env.cognee`, OAuth credentials,
-`.cognee_system/`.
+Do not commit: plaintext API keys, tokens, passwords, cookies, private SSH keys,
+Hermes/OpenClaw runtime config, `.env.keys`, OAuth credentials, or
+`.cognee_system/`. Commit `.env.cognee` only in dotenvx-encrypted form.
 
 ## Search
 
