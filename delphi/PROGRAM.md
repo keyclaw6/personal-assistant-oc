@@ -1,104 +1,129 @@
-# DELPHI PROGRAM — the fixed loop (v0.1)
+# DELPHI PROGRAM — the loop law (v0.2)
 
-Delphi is a paper-trading research system: it discovers **leakers** (accounts that
-post inside information before it is public), qualifies them against **historical
-Polymarket outcomes**, and paper-trades open markets when a qualified leaker posts
-a new call. This file is the law of the loop. Intelligence goes into the calls and
-the diagnosis — never into redesigning the loop mid-run.
+Delphi discovers **leakers** (accounts posting inside information before it is
+public), qualifies them against **historical Polymarket outcomes** (would
+following them have made money at the price offered at post time?), and
+paper-trades open markets when a qualified leaker posts a new call.
 
-## §0 Non-negotiables
+Agents are intelligent and are expected to act like it: they hold their own
+workspaces, accumulate lessons, and exercise discretion inside their mandate.
+The scoreboard, however, is not a player: recorded history and gate arithmetic
+stay deterministic. **Agents think; the scoreboard counts.**
 
-1. **Paper only.** No wallet, no keys, no live orders. `positions.tsv` is the book.
-2. **Deterministic accounting.** Edge, Kelly sizing, hit rates, Brier scores are
-   computed by scripts, never by an LLM. LLMs extract, match, and estimate
-   probabilities; scripts do all arithmetic and all gating.
-3. **Isolation.** Delphi lives entirely under `delphi/`. It never reads or writes
-   `albert/`, `hermes/`, or any runtime file of the personal assistant. Albert is
-   not aware of Delphi.
-4. **The market price at signal time is sacred.** Every signal row records the
-   price when the signal was detected. Accuracy without price context is
-   meaningless: a leaker is valuable only if their hit rate beats the price the
-   market offered at post time.
-5. **Mechanical failures are fixed mechanically.** A parse error, a dead endpoint,
-   a rate limit — one-line fix or skip-and-log. Never a semantic event, never a
-   reason to redesign.
+## §0 Invariants (no agent may change these)
 
-## §1 The loop
+1. **Paper only.** No wallet, no keys, no live orders, no live-trading code path.
+2. **Recorded history is immutable.** No agent edits or deletes existing rows in
+   signals/positions/resolved/results. Append only.
+3. **Gate arithmetic is script-owned.** Edge, Kelly, hit rates, Brier — computed
+   by scripts, never by an LLM.
+4. **Isolation.** Nothing outside `delphi/` is read or written. Albert and the
+   Hermes runtime are not aware of Delphi. In Cognee, Delphi touches only its
+   own dataset (§5).
+5. **The price at signal/post time is sacred.** A leaker's value is beating the
+   price the market offered when they posted — accuracy alone is meaningless.
+6. This file changes only by founder decision.
 
-| Stage | Cadence | Model | What it does |
+## §1 Agents, workspaces, authority
+
+Each agent has a Hermes-style workspace under `agents/<name>/`:
+
+| File | Role (Albert-workspace analogue) |
+|---|---|
+| `AGENT.md` | identity, mandate, discretion, authority tier (≈ SOUL/IDENTITY) |
+| `MEMORY.md` | curated long-term lessons — always in context (≈ MEMORY.md) |
+| `memory/*.md` | dated run notes, append-only episodic record (≈ memory notes) |
+
+Files are the source of truth; Cognee indexes them for retrieval (§5) — the
+same philosophy as the assistant's memory system.
+
+**Authority is proportional to model capability:**
+
+| Tier | Agent (model) | May do | May not do |
 |---|---|---|---|
-| **explorer** | daily | GPT-5.6-Luna (high), via `codex exec` | Proposes new candidate leakers; pulls each candidate's post history; extracts dated claims; matches them to **resolved** Polymarket markets; scripts compute per-call-class hit rate vs price-at-post-time; promotes to `verified` when gates pass |
-| **heartbeat** | every 10 min | GPT-5.6-Luna (high), via `codex exec` | Sweeps the roster (verified + probation) for new posts; extracts claims; matches to **open** markets; logs signal rows with price-at-detection |
-| **judge** | after each heartbeat | Strong model (default: Opus via OpenRouter) | For signals from verified leakers only: independent probability estimate → scripts compute edge and size → paper bet or pass |
-| **resolve** | every 6 h | none (scripts only) | Detects resolved markets; closes positions (P&L, Brier); updates per-leaker per-call-class stats from **all** resolved signals, bet or not |
+| T3 | **orchestrator** (GPT-5.6 xhigh) | observe everything; ONE amendment per run to prompts / AGENT.md / MEMORY.md curation / domain briefs / guarded config keys; run small logged experiments | touch §0 invariants, ledger history, roles/model config, its own governance block, anything outside `delphi/` |
+| T2 | **judge** (strong, default Opus) | probability + confidence judgment; discretion in weighing evidence; write lessons/notes in own workspace | compute edge/size; open positions directly; edit files outside its workspace |
+| T1 | **explorer / heartbeat** (GPT-5.6-Luna high) | extraction, matching, candidate discovery; discretion in what to chase, how to phrase queries, which leaker to deepen; lessons/notes in own workspace | probabilities of world events; any file outside own workspace |
+| T0 | **scripts** | gates, accounting, file integrity, allowlist enforcement | — |
 
-## §2 Gates (exact, deterministic)
+## §2 The loop
 
-**Verification gate** (leaker × call_class promoted to `verified`):
-```
-n_calls ≥ verify_min_calls (10)  AND  est_edge = hit_rate − avg_price_at_call ≥ verify_min_edge (0.05)
-```
-Historical calls found by the explorer count toward `n_calls` — this is what lets
-us start betting soon. Calls without a retrievable price-at-post-time count toward
-`hit_rate` but are flagged `unpriced` and weighted only via the conservative
-fallback: `avg_price_at_call` for unpriced calls is assumed **0.50 or the market's
-final pre-resolution consensus, whichever is higher** — never lower.
-
-**Judge gate** (a signal reaches the judge):
-```
-leaker status = verified (for its call_class)  AND  matched open market  AND  liquidity ≥ min_liquidity_usd
-```
-
-**Bet gate** (paper position opened):
-```
-edge = p_side − price_side − slippage (0.02)  ≥  min_edge (0.10)
-AND judge confidence ≥ judge_min_conf (0.6)
-size = min( kelly_fraction (0.25) × kelly(p, price) × bankroll , max_stake_frac (0.05) × bankroll )
-```
-Probation leakers' signals are logged and scored but **never bet** — that is the
-probation pipeline accruing evidence for free.
-
-## §3 Roles and boundaries
-
-- **Gatherer prompts** (`prompts/explorer.md`, `prompts/heartbeat.md`) do
-  mechanical work only: discover handles, extract dated claims, propose market
-  matches, emit implied side. They never output probabilities of world events.
-- **Judge prompt** (`prompts/judge.md`) outputs `p_yes`, `confidence`, `rationale`
-  — nothing else. It is explicitly forbidden from computing edge or size.
-- **Scripts** own all math, all thresholds, all file writes.
-
-## §4 State files (all TSV, append-oriented, git-versioned)
-
-| File | One row per | Key columns |
+| Stage | Cadence | What it does |
 |---|---|---|
-| `domains/<d>/leakers.tsv` | leaker × call_class | status, n_calls, hits, hit_rate, avg_price_at_call, est_edge, last_seen_ts |
-| `domains/<d>/candidates.tsv` | proposed leaker | handle, rationale, status |
-| `domains/<d>/signals.tsv` | detected call | post_url, claim, call_class, market_id, side, price_at_signal, status, judge_p, edge, resolved_outcome |
-| `domains/<d>/positions.tsv` | paper bet | entry_price, size_usd, shares, status |
-| `domains/<d>/resolved.tsv` | closed bet | outcome, pnl_usd, brier |
-| `ledger/results.tsv` | script run | script, domain, summary |
-| `ledger/learnings.md` | amendment | what changed, evidence, expected effect |
+| **explorer** | every 3 h during kickstart, then daily | Chooses (its discretion, stated in its note): qualify seed/new candidates first, or deepen the thinnest probation leaker with older history. Extracts dated claims → maps to resolved markets → scripts score hit-rate vs price-at-post-time → auto-promotion at the gate. Every scored historical call is written to `signals.tsv` as `status=historical` — the FP/FN audit trail — and never re-scored (dedupe on post_url+market_id). |
+| **heartbeat** | every 10 min | Sweeps verified+probation roster for new posts → claims → open-market match → signal rows with price-at-detection. Probation rows tracked, never bet. |
+| **judge** | after each heartbeat | Verified signals only. Skips markets Delphi already holds (no exposure stacking). Independent p_yes + confidence with leaker scorecard, own calibration record, and retrieved similar past cases → scripts gate and size. |
+| **resolve** | every 6 h | Closes positions (P&L, Brier); folds EVERY resolved signal — historical, tracked, passed, bet — into per-leaker per-call-class stats; feeds summaries to Cognee. |
+| **orchestrator** | hourly | §6. |
 
-## §5 Self-improvement law
+**Kickstart mode** (config `kickstart`, active until its date): explorer runs
+aggressively (higher candidate cap, 3-hourly cron) to build the roster fast.
+The orchestrator may end or extend kickstart via config patch.
 
-The only mutable surfaces are `prompts/*.md`, `config.json`, and
-`domains/*/domain.md`. Amendments follow the house pattern:
+## §3 Gates (exact, deterministic — unchanged by any agent)
 
-1. Evidence first: an amendment must cite ledger rows (missed signals, bad
-   matches, overconfident judge classes, dead sources).
-2. **One amendment per review cycle.** Never batch lever pulls.
-3. Every amendment is one row in `ledger/learnings.md`: date, change, evidence,
-   expected effect. Revert if the next review shows regression.
-4. The loop structure itself (this file, the gates' *shape*) changes only by
-   founder decision, never mid-run.
+```
+verification: n_calls ≥ 10 AND est_edge = hit_rate − avg_price_at_call ≥ 0.05   (per leaker × call_class)
+judge gate:   leaker verified for call_class AND open market matched AND liquidity ≥ min AND no open position on market
+bet gate:     edge = p_side − price_side − slippage ≥ 0.10 AND confidence ≥ 0.60
+sizing:       min(0.25 × kelly(p_side, price_side) × bankroll, 5% × bankroll)
+```
+Unpriced historical calls use the conservative fallback (hit → assumed price
+0.85, miss → 0.50) — never flattering the leaker. False-positive control:
+mapping precision beats recall everywhere; a wrong match poisons a scorecard,
+a missed match only delays qualification.
 
-## §6 Failure handling
+## §4 State
 
-- Source unreachable → log to results.tsv, skip leaker, continue sweep.
-- LLM output not parseable as JSON → one retry with a terse "JSON only" nudge,
-  then skip item and log.
-- Polymarket endpoint failure → skip item; never invent a price.
-- A signal with no matching market → logged with status `no_market` (kept: these
-  become explorer fodder and matching-quality evidence).
-- Known weak spots expected to need the first amendments: claim→market matching
-  precision, Exa X-coverage latency, Gamma search recall. Measure, then amend.
+As v0.1 (TSVs under `domains/<d>/`, run log in `ledger/results.tsv`,
+amendments in `ledger/learnings.md`) plus:
+
+- `signals.tsv` gains `status=historical` rows (explorer's scored back-test
+  calls; audit trail for false-positive/false-negative review).
+- `agents/<name>/` workspaces (§1). Lessons are appended by the owning agent
+  (≤3 per run, only when genuinely new); MEMORY.md curation (dedupe, tighten,
+  reorganize) is the orchestrator's job — higher authority curates.
+
+## §5 Memory & Cognee (shared server, isolated dataset)
+
+- Delphi uses the SAME local Cognee server as the assistant
+  (`http://127.0.0.1:8000`) but exclusively the **`delphi-trading` dataset**.
+  Every add/search call names that dataset explicitly. Albert's datasets are
+  never read, written, or cognified by Delphi.
+- Ingested: agents' memory notes, resolved-signal summaries, qualification
+  summaries. Retrieved: by judge (similar past calls before estimating), by
+  explorer (prior qualification work), by orchestrator (cross-agent search).
+- Cognee is retrieval only; files remain the source of truth. Server down or
+  API mismatch → skip silently and continue on files (same fallback philosophy
+  as the assistant's cognee-memory plugin). Delphi never starts/stops the
+  server — that is assistant infrastructure.
+
+## §6 Self-improvement & the orchestrator
+
+The orchestrator is the top-level maintainer/goal-direction agent. Hourly:
+
+1. Reads: goal (its AGENT.md), run log tail, every agent's MEMORY.md + latest
+   note, roster/signals/positions summaries, active experiments, learnings.
+2. Diagnoses against the goal: is the machine finding leakers? qualifying
+   them? are signals reaching the judge? are matches precise (FP/FN check on
+   `historical` rows)? is anything stuck or drifting?
+3. May apply **at most ONE amendment per run** (script-enforced), chosen from:
+   - rewrite one task prompt (`prompts/*.md`)
+   - rewrite one agent's `AGENT.md` (mandate tuning) or curate one `MEMORY.md`
+   - update one domain brief
+   - patch guarded config keys (thresholds, cadence hints, sources, kickstart)
+   Blocked always: §0 invariants, `roles`, `codex_cmd`, `paper_only`,
+   `bankroll_usd`, its own governance block, ledger history.
+4. Frames amendments as experiments: rationale, success metric, review-after.
+   Reviews previous experiments when due; keeps or reverts. Everything is
+   logged: one `ledger/learnings.md` row + a dated note in its workspace.
+
+Mechanical failures (parse error, dead endpoint, rate limit) are fixed
+mechanically or skipped-and-logged — never treated as semantic events.
+
+## §7 Known weak spots (measure, then amend)
+
+Claim→market matching precision; Exa X-coverage latency/gaps; Gamma search
+recall; unpriced-history conservatism slowing verification. These are the
+expected first experiment targets — evidence lives in `historical` and
+`no_market` signal rows and results.tsv.

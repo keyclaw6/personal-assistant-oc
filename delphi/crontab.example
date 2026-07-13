@@ -1,17 +1,23 @@
 # Delphi paper trader — crontab (adjust REPO path; install with `crontab -e`)
 # Prereqs: `mkdir -p ~/personal-assistant-oc/delphi/tmp`, dotenvx, logged-in codex CLI.
-# flock prevents overlapping heartbeats when LLM calls run long.
+# flock prevents overlapping runs when LLM calls run long.
 
 REPO=/Users/kristian/personal-assistant-oc
 
-# Heartbeat sweep + judge, every 10 minutes (PROGRAM.md §1)
+# Heartbeat sweep + judge, every 10 minutes (PROGRAM §2)
 */10 * * * * cd $REPO && flock -n delphi/tmp/hb.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/heartbeat.py --domain ai-releases && dotenvx run -f .env.delphi -- python3 delphi/scripts/judge.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+
+# Orchestrator — hourly maintenance pass (PROGRAM §6)
+3 * * * * cd $REPO && flock -n delphi/tmp/orc.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/orchestrator.py' >> delphi/tmp/cron.log 2>&1
 
 # Resolver, every 6 hours
 17 */6 * * * cd $REPO && dotenvx run -f .env.delphi -- python3 delphi/scripts/resolve.py --domain ai-releases >> delphi/tmp/cron.log 2>&1
 
-# Explorer (discovery + historical qualification), daily 06:07
-7 6 * * * cd $REPO && flock -n delphi/tmp/ex.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+# Explorer — KICKSTART cadence (every 3 h) while config.kickstart is active.
+# After kickstart, comment this line and use the daily line below.
+7 */3 * * * cd $REPO && flock -n delphi/tmp/ex.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+# Post-kickstart daily explorer:
+# 7 6 * * * cd $REPO && flock -n delphi/tmp/ex.lock -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
 
-# Daily state snapshot — commits ONLY delphi/ paths (isolation, PROGRAM.md §0.3)
+# Daily state snapshot — commits ONLY delphi/ paths (isolation, PROGRAM §0)
 49 20 * * * cd $REPO && git add delphi && git diff --cached --quiet || git commit -m "delphi: daily state snapshot" >> delphi/tmp/cron.log 2>&1

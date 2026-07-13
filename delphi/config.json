@@ -2,9 +2,9 @@
   "paper_only": true,
   "bankroll_usd": 1000,
   "thresholds": {
-    "min_edge": 0.10,
+    "min_edge": 0.1,
     "slippage": 0.02,
-    "judge_min_conf": 0.60,
+    "judge_min_conf": 0.6,
     "verify_min_calls": 10,
     "verify_min_edge": 0.05,
     "kelly_fraction": 0.25,
@@ -13,31 +13,59 @@
   },
   "cadence": {
     "heartbeat_minutes": 10,
-    "explorer": "daily",
-    "resolve_hours": 6
+    "explorer": "every 3h during kickstart, daily after",
+    "resolve_hours": 6,
+    "orchestrator_hours": 1
+  },
+  "kickstart": {
+    "active_until": "2026-07-18T00:00:00Z",
+    "explorer_max_candidates_per_run": 8
   },
   "roles": {
-    "explorer": { "backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning": "high" },
-    "heartbeat": { "backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning": "high" },
+    "explorer": {
+      "backend": "codex-cli",
+      "model": "gpt-5.6-luna",
+      "reasoning": "high"
+    },
+    "heartbeat": {
+      "backend": "codex-cli",
+      "model": "gpt-5.6-luna",
+      "reasoning": "high"
+    },
     "judge": {
       "backend": "http",
       "model": "anthropic/claude-opus-4.6",
       "base_url": "https://openrouter.ai/api/v1",
       "api_key_env": "OPENROUTER_API_KEY",
       "reasoning": "high"
+    },
+    "orchestrator": {
+      "backend": "codex-cli",
+      "model": "gpt-5.6-luna",
+      "reasoning": "xhigh"
     }
   },
   "codex_cmd": [
-    "codex", "exec",
+    "codex",
+    "exec",
     "--skip-git-repo-check",
-    "--sandbox", "read-only",
-    "-m", "{model}",
-    "-c", "model_reasoning_effort=\"{reasoning}\"",
-    "--output-last-message", "{outfile}",
+    "--sandbox",
+    "read-only",
+    "-m",
+    "{model}",
+    "-c",
+    "model_reasoning_effort=\"{reasoning}\"",
+    "--output-last-message",
+    "{outfile}",
     "-"
   ],
-  "llm": { "timeout_seconds": 600, "max_json_retries": 1 },
-  "domains": ["ai-releases"],
+  "llm": {
+    "timeout_seconds": 600,
+    "max_json_retries": 1
+  },
+  "domains": [
+    "ai-releases"
+  ],
   "sources": {
     "x_backend": "exa",
     "exa_api_key_env": "EXA_API_KEY",
@@ -46,5 +74,25 @@
     "explorer_max_candidates_per_run": 3,
     "history_days": 180,
     "history_max_posts": 50
+  },
+  "cognee": {
+    "enabled": true,
+    "url_env": "DELPHI_COGNEE_URL",
+    "default_url": "http://127.0.0.1:8000",
+    "token_env": "DELPHI_COGNEE_TOKEN",
+    "dataset": "delphi-trading",
+    "search_type": "CHUNKS",
+    "timeout_seconds": 20
+  },
+  "orchestrator": {
+    "max_amendments_per_run": 1,
+    "editable_files_regex": "^(prompts/[a-z]+\\.md|agents/[a-z]+/(AGENT|MEMORY)\\.md|domains/[a-z0-9-]+/domain\\.md)$",
+    "config_blocked_keys": [
+      "paper_only",
+      "roles",
+      "codex_cmd",
+      "bankroll_usd",
+      "orchestrator"
+    ]
   }
 }

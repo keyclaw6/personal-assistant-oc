@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 
+import cognee
 import polymarket as pm
 from lib import (append_tsv, domain_dir, ensure_leaker_row, load_config,
                  log_result, now_iso, read_tsv, side_values, write_tsv,
@@ -65,6 +66,10 @@ def main():
         p["status"] = "closed"
         n_closed += 1
         pnl_total += pnl
+        cognee.add(f"Resolved paper bet: {p['side']} on '{p['market_question'][:100]}' "
+                   f"entry {p['entry_price']}, judged p={p.get('judge_p')}, outcome {winner}, "
+                   f"pnl {pnl:+.2f}, leaker {sig.get('leaker_id')} class {sig.get('call_class')}",
+                   meta="resolved bet")
 
     # 2) score all resolved signals into leaker stats
     n_scored = 0
@@ -100,11 +105,17 @@ def main():
         update_leaker_stats(row, hit, price_side, th)
         if before != "verified" and row["status"] == "verified":
             promotions.append(f"{s['leaker_id']}/{s['call_class']}")
+            cognee.add(f"Leaker promoted to verified: {s['leaker_id']} on {s['call_class']} "
+                       f"(hit_rate {row['hit_rate']}, est_edge {row['est_edge']}, "
+                       f"n={row['n_calls']})", meta="promotion")
         n_scored += 1
 
     write_tsv(ddir / "positions.tsv", positions)
     write_tsv(ddir / "signals.tsv", signals)
     write_tsv(ddir / "leakers.tsv", leakers)
+
+    if n_closed or n_scored:
+        cognee.cognify()  # refresh the delphi dataset graph — never per-heartbeat
 
     resolved_all = read_tsv(ddir / "resolved.tsv")
     lifetime_pnl = sum(float(r.get("pnl_usd") or 0) for r in resolved_all)

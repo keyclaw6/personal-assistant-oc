@@ -44,7 +44,7 @@ and confident calls may be different call classes of the same leaker.
 
 Output JSON only:
 ```json
-{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "checkable": true, "market_query": "..."}]}
+{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "checkable": true, "market_query": "..."}], "lessons": ["optional, ≤3, only durable discoveries worth remembering"]}
 ```
 
 ## Task C — map claims to found markets (when given claims + candidate markets)

@@ -24,7 +24,7 @@ Most sweeps should output an empty list — that is the normal, correct outcome.
 
 Output JSON only:
 ```json
-{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "market_query": "...", "hedged": false, "urgency": "normal"}]}
+{"claims": [{"claim": "...", "post_ts": "...", "post_url": "...", "call_class": "...", "market_query": "...", "hedged": false, "urgency": "normal"}], "lessons": ["optional, ≤2, only durable discoveries"]}
 ```
 
 ## Market mapping (when given a claim + candidate open markets)

@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """Heartbeat (every 10 min): sweep the roster (verified + probation) for new
 posts, extract claims, match to OPEN Polymarket markets, log signal rows with
-the price at detection (PROGRAM.md §0.4). Probation signals are tracked, never
+the price at detection (PROGRAM §0.5). Probation signals are tracked, never
 bet. Judge runs separately on `pending_judge` rows.
 """
 from __future__ import annotations
 
 import argparse
+import time
 
+import cognee
 import polymarket as pm
-from lib import (append_tsv, domain_dir, gen_id, load_config, log_result,
-                 now_iso, read_tsv, unix_to_iso, iso_to_unix, write_tsv, ROOT)
+from lib import (ROOT, agent_context, append_lessons, append_tsv, domain_dir,
+                 gen_id, iso_to_unix, load_config, log_result, now_iso,
+                 read_tsv, unix_to_iso, write_note, write_tsv)
 from llm import call_json
 from sources import fetch_posts
 
 
 def sweep_roster(leakers: list[dict]) -> list[dict]:
-    """Unique leakers with any row in (verified, probation)."""
     seen, out = set(), []
     for r in leakers:
         if r["status"] not in ("verified", "probation"):
@@ -34,6 +36,13 @@ def is_verified(leakers: list[dict], leaker_id: str, call_class: str) -> bool:
                and r["status"] == "verified" for r in leakers)
 
 
+def logged_empty_today() -> bool:
+    today = time.strftime("%Y-%m-%d")
+    rows = read_tsv(ROOT / "ledger" / "results.tsv")
+    return any(r["script"] == "heartbeat" and r["ts"].startswith(today)
+               and "roster empty" in r["summary"] for r in rows)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", default="ai-releases")
@@ -42,6 +51,7 @@ def main():
     th = cfg["thresholds"]
     ddir = domain_dir(args.domain)
     brief = (ddir / "domain.md").read_text(encoding="utf-8")
+    ctx = agent_context("heartbeat", max_notes=0)  # AGENT.md + MEMORY.md only — speed
     prompt_t = (ROOT / "prompts" / "heartbeat.md").read_text(encoding="utf-8")
     leakers = read_tsv(ddir / "leakers.tsv")
     signals = read_tsv(ddir / "signals.tsv")
@@ -49,11 +59,14 @@ def main():
 
     roster = sweep_roster(leakers)
     if not roster:
-        log_result("heartbeat", args.domain,
-                   "roster empty (no verified/probation leakers) — run explorer.py")
+        if not logged_empty_today():  # once a day, not 144×
+            log_result("heartbeat", args.domain,
+                       "roster empty (no verified/probation leakers) — run explorer.py")
         return
 
     n_posts = n_claims = n_pending = n_tracked = n_nomarket = 0
+    lessons_all: list[str] = []
+    events: list[str] = []
     for lk in roster:
         since = max((r.get("last_seen_ts") or "" for r in leakers
                      if r["leaker_id"] == lk["leaker_id"]), default="")
@@ -70,11 +83,12 @@ def main():
         n_posts += len(posts)
 
         post_block = "\n".join(f"- [{p['ts']}] {p['url']}\n  {p['text'][:500]}" for p in posts)
-        prompt = (prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
+        prompt = (ctx + "\n\n" + prompt_t + "\n\n## DOMAIN BRIEF\n" + brief
                   + f"\n\n## LEAKER\n{lk['platform']}/{lk['handle']}"
                   + "\n\n## NEW POSTS\n" + post_block
                   + "\n\n## REQUEST\nExtract claims now. JSON only.")
         j = call_json("heartbeat", prompt, cfg) or {}
+        lessons_all += j.get("lessons") or []
         claims = j.get("claims", [])[:5]
         n_claims += len(claims)
 
@@ -96,7 +110,7 @@ def main():
                     f"- claim_index 0 | market_id {m['id']} | {m['question']} | "
                     f"criteria: {m['description'][:200]}" for m in markets)
                 mp = call_json("heartbeat",
-                               prompt_t + "\n\n## CLAIMS\n- [0] " + sig["claim"]
+                               ctx + "\n\n" + prompt_t + "\n\n## CLAIMS\n- [0] " + sig["claim"]
                                + "\n\n## CANDIDATE (claim, market) PAIRS\n" + mk_block
                                + "\n\n## REQUEST\nPerform market mapping now. JSON only.",
                                cfg) or {}
@@ -115,7 +129,7 @@ def main():
                 if price_yes is None:
                     price_yes = chosen["yes_price"]
                 if price_yes is None:
-                    sig.update({"status": "no_market", "note": "no price available — skipped (§6)"})
+                    sig.update({"status": "no_market", "note": "no price available — skipped (§7)"})
                     n_nomarket += 1
                 else:
                     verified = is_verified(leakers, lk["leaker_id"], sig["call_class"])
@@ -134,6 +148,7 @@ def main():
                         n_tracked += 1
             append_tsv(ddir / "signals.tsv", sig)
             known_posts.add(sig["post_url"])
+            events.append(f"{lk['handle']}: {sig['claim'][:90]} → {sig['status']}")
 
         newest = max(p["ts"] for p in posts)
         for r in leakers:
@@ -141,6 +156,11 @@ def main():
                 r["last_seen_ts"] = newest
 
     write_tsv(ddir / "leakers.tsv", leakers)
+    append_lessons("heartbeat", lessons_all)
+    if events:  # note only when something happened — 144 runs/day otherwise
+        note = "Signals this sweep:\n- " + "\n- ".join(events)
+        write_note("heartbeat", "signals", note)
+        cognee.add(note, meta=f"heartbeat {args.domain}")
     log_result("heartbeat", args.domain,
                f"swept {len(roster)} leakers, {n_posts} new posts, {n_claims} claims → "
                f"{n_pending} pending_judge, {n_tracked} probation-tracked, {n_nomarket} no_market")

@@ -37,7 +37,7 @@ You will be given:
 - Output JSON only:
 
 ```json
-{"p_yes": 0.87, "confidence": 0.75, "rationale": "2-4 sentences: the decisive considerations, including what the market price seems to miss or already include."}
+{"p_yes": 0.87, "confidence": 0.75, "rationale": "2-4 sentences: the decisive considerations, including what the market price seems to miss or already include.", "lessons": ["optional, ≤3, durable judgment patterns only"]}
 ```
 
 `confidence` is your own epistemic confidence in the estimate (0–1): how solid the

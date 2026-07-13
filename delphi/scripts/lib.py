@@ -208,3 +208,81 @@ def ensure_leaker_row(leakers: list[dict], base: dict, call_class: str) -> dict:
     })
     leakers.append(row)
     return row
+
+
+# ---------- agent workspaces (PROGRAM.md §1) ----------
+
+def agent_dir(name: str) -> Path:
+    return ROOT / "agents" / name
+
+
+def agent_context(name: str, max_notes: int = 2) -> str:
+    """Assemble an agent's standing context: AGENT.md + MEMORY.md + recent notes."""
+    parts = []
+    for fname in ("AGENT.md", "MEMORY.md"):
+        p = agent_dir(name) / fname
+        if p.exists():
+            parts.append(p.read_text(encoding="utf-8"))
+    mem = agent_dir(name) / "memory"
+    if max_notes > 0 and mem.exists():
+        for n in sorted(mem.glob("*.md"), reverse=True)[:max_notes]:
+            parts.append(f"## Recent note: {n.name}\n"
+                         + n.read_text(encoding="utf-8")[:2500])
+    return "\n\n".join(parts)
+
+
+def write_note(name: str, slug: str, content: str) -> Path:
+    """Dated, append-safe episodic note in the agent's own workspace."""
+    d = agent_dir(name) / "memory"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / f"{time.strftime('%Y-%m-%d')}-{slug}.md"
+    header = f"# {slug} — {now_iso()}\n\n"
+    with open(p, "a", encoding="utf-8") as f:
+        f.write((header if not p.exists() or p.stat().st_size == 0 else f"\n---\n{header}")
+                + content.strip() + "\n")
+    return p
+
+
+def append_lessons(name: str, lessons) -> int:
+    """Append the agent's end-of-run lessons to its MEMORY.md (≤3, deduped)."""
+    if not lessons:
+        return 0
+    p = agent_dir(name) / "MEMORY.md"
+    existing = p.read_text(encoding="utf-8") if p.exists() else ""
+    date = time.strftime("%Y-%m-%d")
+    added = 0
+    with open(p, "a", encoding="utf-8") as f:
+        for lesson in list(lessons)[:3]:
+            line = _clean(lesson)
+            if line and line not in existing:
+                f.write(f"- {date}: {line}\n")
+                added += 1
+    return added
+
+
+# ---------- guarded config patch (orchestrator authority, PROGRAM.md §6) ----------
+
+def config_patch(patch: dict, blocked: list[str]) -> tuple[bool, str]:
+    """Apply {dotted.key: value} onto config.json. Only EXISTING keys; top-level
+    blocked keys rejected. Returns (ok, message)."""
+    cfg = load_config()
+    for key in patch:
+        if key.split(".")[0] in blocked:
+            return False, f"blocked key: {key}"
+    for key, val in patch.items():
+        node = cfg
+        parts = key.split(".")
+        for part in parts[:-1]:
+            if not isinstance(node, dict) or part not in node:
+                return False, f"unknown path: {key}"
+            node = node[part]
+        if not isinstance(node, dict) or parts[-1] not in node:
+            return False, f"unknown key: {key}"
+        node[parts[-1]] = val
+    (ROOT / "config.json").write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    return True, f"patched {', '.join(patch)}"
+
+
+def kickstart_active(cfg: dict) -> bool:
+    until = (cfg.get("kickstart") or {}).get("active_until", "")
+    return bool(until) and now_iso() < until
