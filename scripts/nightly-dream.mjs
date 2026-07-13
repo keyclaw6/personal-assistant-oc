@@ -3,7 +3,7 @@
  * nightly-dream.mjs — Compatibility helper for the Albert nightly review job.
  *
  * This script does not run the reflection itself. It provides the exact agent
- * message for the scheduled OpenClaw instance and checks whether yesterday's
+ * message for the scheduled Hermes instance and checks whether yesterday's
  * reflection exists. The actual thinking is done by Albert using
  * albert/jobs/NIGHTLY_REVIEW.md.
  *

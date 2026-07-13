@@ -1,7 +1,9 @@
 # Google and LinkedIn Integration
 
-The active integration path is the local `composio-limited` OpenClaw plugin.
-GOG is legacy and not part of the active Albert runtime.
+The active integration path is the local Hermes `composio-limited` plugin.
+It reuses the existing Composio connections and the legacy OpenClaw
+implementation module as its source adapter. GOG is legacy and not part of the
+active Albert runtime.
 
 ## Available tool families
 

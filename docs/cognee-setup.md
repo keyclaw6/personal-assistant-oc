@@ -1,9 +1,12 @@
 # Cognee Setup — Albert
 
-The Albert agent uses [Cognee](https://www.cognee.ai/) for memory
-indexing and retrieval. The OpenClaw plugin `@cognee/cognee-openclaw`
-sits on top of the file-based `albert/memory/` directory, indexing files into a
-knowledge graph (Kuzu) + vector store (LanceDB) + relational DB (SQLite).
+The Albert agent uses [Cognee](https://www.cognee.ai/) for memory indexing and
+retrieval. The active Hermes plugin is `cognee-memory`; it searches the
+existing Cognee API first and falls back to direct file-memory search when the
+vector store is unhealthy.
+
+The old OpenClaw plugin `@cognee/cognee-openclaw` created the current datasets
+and remains useful as migration reference.
 
 Files remain the source of truth. Cognee provides retrieval only.
 
@@ -13,16 +16,15 @@ Files remain the source of truth. Cognee provides retrieval only.
 albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Kuzu + LanceDB + SQLite
                        ▲
                        │
-            OpenClaw plugin (cognee-openclaw)
-            auto-recall + auto-index on each agent run
+            Hermes plugin (cognee-memory)
+            auto-recall with file fallback
 ```
 
 ## Quick start
 
-1. **Install the plugin** (already done):
+1. **Link the Hermes plugin**:
    ```bash
-   openclaw plugins install @cognee/cognee-openclaw
-   openclaw cognee setup
+   npm run hermes:migrate
    ```
 
 2. **Start the Cognee server**:
@@ -32,11 +34,11 @@ albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Ku
 
 3. **Verify**:
    ```bash
-   openclaw cognee health
-   openclaw cognee status
+   hermes memory status
+   curl -fsS http://127.0.0.1:8000/health
    ```
 
-4. **Initial sync**:
+4. **Legacy index maintenance**:
    ```bash
    openclaw cognee index
    ```

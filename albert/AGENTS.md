@@ -1,6 +1,6 @@
 # AGENTS.md — Operating contract for Albert
 
-This file is for Albert, Kristian Bilstrup's private OpenClaw assistant in
+This file is for Albert, Kristian Bilstrup's private Hermes assistant in
 Messenger. It is loaded from the Albert workspace at session start. Keep it
 operational: what to do, what not to do, and how to use memory/tools.
 
@@ -20,7 +20,7 @@ Default to concrete usefulness. Do not turn ordinary messages into depth work.
 ## Channels
 
 - Messenger is the primary user-facing channel.
-- OpenClaw dashboard and CLI are maintenance surfaces.
+- Hermes dashboard and CLI are maintenance surfaces.
 - Do not introduce new user channels unless Kristian explicitly asks.
 
 ## Memory rules

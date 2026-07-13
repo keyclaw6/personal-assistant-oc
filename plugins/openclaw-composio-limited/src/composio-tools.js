@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { jsonResult, readStringParam } from "openclaw/plugin-sdk/core";
 import { Type } from "typebox";
+import { formatComposioFailure } from "./composio-errors.js";
 
 const COMPOSIO_BIN = process.env.COMPOSIO_BIN || "/home/kab/.composio/composio";
 
@@ -188,7 +189,7 @@ function parseComposioJson(output) {
   return JSON.parse(text.slice(Math.min(...starts)));
 }
 
-async function runComposio(tool, account, args) {
+async function runComposio(tool, account, args, toolkit) {
   const dir = await mkdtemp(join(tmpdir(), "openclaw-composio-"));
   const dataPath = join(dir, "input.json");
   await writeFile(dataPath, JSON.stringify(args ?? {}), "utf8");
@@ -210,7 +211,15 @@ async function runComposio(tool, account, args) {
       child.stderr.on("data", (chunk) => { err += chunk; });
       child.on("close", (exitCode) => resolve([out, err, exitCode]));
     });
-    if (code !== 0) throw new Error(stderr || stdout || `composio exited with ${code}`);
+    if (code !== 0) {
+      const accountToolkit = toolkit || ACCOUNTS.find((item) => item.id === account)?.toolkit || "unknown";
+      throw new Error(formatComposioFailure({
+        toolkit: accountToolkit,
+        account,
+        tool,
+        output: stderr || stdout || `composio exited with ${code}`,
+      }));
+    }
     return parseComposioJson(stdout);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -234,7 +243,7 @@ function createToolkitTool(toolkit, name, label, description) {
       const tool = readStringParam(rawParams, "tool", { required: true });
       if (!accountIds.includes(account)) throw new Error(`Account is not allowed for ${toolkit}: ${account}`);
       if (!toolSlugs.includes(tool)) throw new Error(`Tool is not allowed for ${toolkit}: ${tool}`);
-      return jsonResult(await runComposio(tool, account, rawParams.arguments ?? {}));
+      return jsonResult(await runComposio(tool, account, rawParams.arguments ?? {}, toolkit));
     },
   };
 }
@@ -254,7 +263,7 @@ function createFixedAccountTool(accountId, name, label, description) {
     execute: async (_toolCallId, rawParams) => {
       const tool = readStringParam(rawParams, "tool", { required: true });
       if (!toolSlugs.includes(tool)) throw new Error(`Tool is not allowed for ${account.label}: ${tool}`);
-      return jsonResult(await runComposio(tool, account.id, rawParams.arguments ?? {}));
+      return jsonResult(await runComposio(tool, account.id, rawParams.arguments ?? {}, account.toolkit));
     },
   };
 }

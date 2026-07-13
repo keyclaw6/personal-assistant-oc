@@ -1,0 +1,5 @@
+name: composio-limited
+kind: standalone
+version: 0.1.0
+description: Re-exposes Albert's allowlisted Composio Gmail, Calendar, Tasks, and LinkedIn tools to Hermes.
+author: Kristian Bilstrup / Codex

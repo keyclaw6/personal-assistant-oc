@@ -1,10 +1,10 @@
 # personal-assistant-oc — Albert
 
-Private repository for **Albert**, Kristian Bilstrup's personal OpenClaw
+Private repository for **Albert**, Kristian Bilstrup's personal Hermes
 agent. The runtime workspace lives in `albert/`; repo-root files are
 maintenance code, docs, plugins, and setup.
 
-The active runtime contract is the standard OpenClaw workspace in
+The active runtime contract is the Hermes workspace in
 `albert/`: `SOUL.md`, `AGENTS.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`,
 `MEMORY.md`, plus explicit prompts under `albert/jobs/` and
 `albert/methods/`.
@@ -12,14 +12,14 @@ The active runtime contract is the standard OpenClaw workspace in
 ## What this is
 
 - A single personal agent — placeholder name *Albert* — accessed through
-  Facebook Messenger. OpenClaw dashboard / CLI are maintenance-only.
+  Facebook Messenger. Hermes CLI / gateway are the active runtime.
 - File-first memory under `albert/memory/`. Plain Markdown, hand-editable,
   portable.
-- The OpenClaw plugin `@cognee/cognee-openclaw` (manifest id
-  `cognee-openclaw`) sits on top, indexing those files into a knowledge graph
-  (Kuzu) + vector store (LanceDB) and injecting retrieval results before
-  each agent run.
-- LLM: DeepSeek via OpenRouter. Embeddings: OpenRouter (Ollama fallback).
+- The Hermes memory provider `cognee-memory` sits on top, querying the
+  existing Cognee/Kuzu/LanceDB index when healthy and falling back to direct
+  file-memory search if the vector store is unavailable.
+- LLM runtime: OpenAI Codex OAuth through Hermes, imported from the local
+  Codex CLI login. The default is GPT-5.6-Luna with `xhigh` reasoning.
 - Understanding-first belief change: Albert tracks what Kristian is trying to
   understand, what has landed, what has not landed, and what evidence supports
   integration.
@@ -35,24 +35,26 @@ The active runtime contract is the standard OpenClaw workspace in
 
 | Path | What |
 | --- | --- |
-| `albert/` | Actual OpenClaw runtime workspace. |
-| `albert/IDENTITY.md`, `albert/SOUL.md`, `albert/USER.md`, `albert/AGENTS.md`, `albert/TOOLS.md`, `albert/MEMORY.md`, `albert/HEARTBEAT.md` | Runtime bootstrap files loaded by OpenClaw. |
+| `albert/` | Actual Hermes runtime workspace. |
+| `albert/IDENTITY.md`, `albert/SOUL.md`, `albert/USER.md`, `albert/AGENTS.md`, `albert/TOOLS.md`, `albert/MEMORY.md`, `albert/HEARTBEAT.md` | Runtime bootstrap files loaded by Hermes. |
 | `albert/jobs/`, `albert/methods/` | Explicit job and self-development workflows. |
 | `albert/archive/design/PHILOSOPHY.old.md` | Archived design rationale, not runtime instruction. |
 | `IMPLEMENTATION_PLAN.md` | Historical pivot plan. |
 | `albert/memory/` | All durable knowledge (files are source of truth). |
-| `plugins/openclaw-composio-limited/` | Allowlisted Composio tools for Gmail, Calendar, Tasks, and LinkedIn. |
-| `plugins/openclaw-messenger/` | Facebook Messenger channel plugin. |
+| `hermes/plugins/composio-limited/` | Allowlisted Composio tools for Gmail, Calendar, Tasks, and LinkedIn. |
+| `hermes/plugins/messenger-platform/` | Facebook Messenger platform adapter. |
+| `hermes/plugins/cognee-memory/` | Cognee-backed Hermes memory provider with file fallback. |
+| `plugins/openclaw-*` | Legacy source/reference from the previous OpenClaw setup. |
 | `scripts/` | Local maintenance (`gws.mjs`, `morning-brief.mjs`, `repo-check.mjs`). |
-| `docs/` | Architecture, Cognee setup, OpenClaw setup, security, integrations. |
-| `openclaw-config/` | OpenClaw instance config. |
+| `docs/` | Architecture, Cognee setup, Hermes migration, security, integrations. |
+| `openclaw-config/` | Legacy OpenClaw instance config, retained for reference while the branch is validated. |
 | `archive/` | Previous structures (memory-old, memory-wiki-old, belief-system-old, templates-old). Reference only; not indexed. |
 | `.env.cognee`, `.cognee_system/` | Gitignored — config and runtime data. |
 
 ## Channels
 
 - **Facebook Messenger** — primary.
-- **OpenClaw dashboard / CLI** — maintenance only.
+- **Hermes CLI / gateway** — maintenance and direct operation.
 
 ## Daily rhythm
 
@@ -66,27 +68,31 @@ Requires Node `>=22.14.0`.
 
 ```bash
 npm run check
+npm run hermes:migrate
 ```
 
-Set the Albert runtime folder as the OpenClaw workspace:
+The migration script is idempotent. It links repo-owned Hermes plugins into
+`~/.hermes/plugins`, imports the current Codex CLI OAuth token into Hermes,
+copies Messenger/Tavily/Cognee settings from the local OpenClaw/Cognee config,
+and points Hermes at `albert/`.
 
 ```bash
-openclaw config set agents.defaults.workspace "/home/kab/personal-assistant-oc/albert"
+hermes status
+hermes plugins list
+hermes gateway run --accept-hooks
 ```
 
-Install the memory plugin (see `docs/cognee-setup.md` for the full path,
-including the known install-bug workaround):
+For the local Cognee API:
 
 ```bash
-openclaw plugins install @cognee/cognee-openclaw@2026.3.4
-openclaw plugins list   # verify cognee-openclaw is enabled
-openclaw gateway restart
+npm run cognee -- status
+npm run cognee -- start
 ```
 
 ## Portable secrets
 
 Plaintext credentials are not committed. The portable path is an encrypted
-bundle at `secrets/openclaw-secrets.enc.json`, which can contain the live
+bundle at `secrets/openclaw-secrets.enc.json`, which can contain the legacy
 OpenClaw config (`~/.openclaw/openclaw.json`) and local env files such as
 `.env.cognee`.
 
@@ -94,14 +100,15 @@ Export from this computer:
 
 ```bash
 OPENCLAW_SECRETS_PASSPHRASE_FILE=secrets/openclaw-secrets.passphrase npm run secrets:export
-git add secrets/openclaw-secrets.enc.json && git commit -m "Update encrypted OpenClaw secrets"
+git add secrets/openclaw-secrets.enc.json && git commit -m "Update encrypted assistant secrets"
 ```
 
 Restore on another computer after cloning:
 
 ```bash
 OPENCLAW_SECRETS_PASSPHRASE_FILE=/path/to/openclaw-secrets.passphrase npm run secrets:import
-openclaw gateway restart
+npm run hermes:migrate
+hermes gateway restart
 ```
 
 Keep `secrets/openclaw-secrets.passphrase` outside git, preferably in a
@@ -116,6 +123,5 @@ not recoverable.
 - Gateway bound to loopback unless a documented remote-access plan exists.
 - External content (emails, attachments, web pages, transcripts, therapy notes,
   external LLM chats) is treated as untrusted input.
-- Run `openclaw security audit --deep` after upgrades or channel/tool
-  changes.
+- Run `hermes doctor` after upgrades or channel/tool changes.
 - Run `npm run repo:check` before committing.

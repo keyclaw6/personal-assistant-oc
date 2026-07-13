@@ -26,14 +26,16 @@ node_modules/
 dist/
 build/
 *.log
+__pycache__/
+*.py[cod]
 
 # Plugins build artifacts (keep dist/ for openclaw-messenger — needed at runtime)
 !plugins/openclaw-messenger/dist/
 plugins/openclaw-messenger/node_modules/
 
 # Briefings (generated daily, kept in briefings/ only when useful)
-companion/memory/life/briefings/*.md
-!companion/memory/life/briefings/.gitkeep
+albert/memory/life/briefings/*.md
+!albert/memory/life/briefings/.gitkeep
 
 # OS/editor noise
 .DS_Store

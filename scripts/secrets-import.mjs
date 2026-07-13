@@ -53,4 +53,4 @@ for (const file of payload.files ?? []) {
   console.log(`Restored ${file.label}: ${target}`);
 }
 
-console.log("Secrets import complete. Restart OpenClaw after importing.");
+console.log("Secrets import complete. Run npm run hermes:migrate, then restart Hermes after importing.");

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * evening-journal.mjs — Check whether today's evening journal exists and,
- * optionally, ask Albert to send Kristian the reminder prompt.
+ * optionally, ask Hermes to send Kristian the reminder prompt.
  *
  * Usage:
  *   node scripts/evening-journal.mjs --status [--json]
@@ -114,20 +114,14 @@ function sendReminder() {
   }
 
   execFileSync(
-    "openclaw",
+    "hermes",
     [
-      "agent",
-      "--agent",
-      "main",
-      ...(process.env.JOURNAL_REMINDER_REPLY_CHANNEL
-        ? ["--reply-channel", process.env.JOURNAL_REMINDER_REPLY_CHANNEL]
-        : []),
-      ...(process.env.JOURNAL_REMINDER_REPLY_TO
-        ? ["--reply-to", process.env.JOURNAL_REMINDER_REPLY_TO]
-        : []),
-      "--deliver",
-      "--message",
-      `Send Kristian this exact evening journal reminder and nothing else:\n\n${message}`,
+      "send",
+      "--to",
+      process.env.JOURNAL_REMINDER_REPLY_TO ||
+        process.env.JOURNAL_REMINDER_REPLY_CHANNEL ||
+        "messenger",
+      message,
     ],
     { cwd: REPO, stdio: "inherit", timeout: 120000 },
   );

@@ -1,0 +1,6 @@
+name: cognee-memory
+version: 0.1.0
+description: "Cognee-backed memory provider for Albert. Reuses the existing OpenClaw Cognee dataset and keeps albert/memory as source of truth."
+hooks:
+  - on_memory_write
+  - on_pre_compress

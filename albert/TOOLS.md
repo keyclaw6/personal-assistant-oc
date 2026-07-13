@@ -1,20 +1,18 @@
 # TOOLS.md — Tooling
 
-## OpenClaw
+## Hermes
 
-- CLI: `openclaw`
-- Dashboard: `openclaw dashboard`
-- Local gateway: `http://127.0.0.1:18789/`
-- Status: `openclaw status --json`
-- Models status: `openclaw models status --json`
-- Plugins list: `openclaw plugins list`
-- Security audit: `openclaw security audit --deep`
+- CLI: `hermes`
+- Local gateway: `hermes gateway run --accept-hooks`
+- Status: `hermes status`
+- Plugins list: `hermes plugins list`
+- Memory status: `hermes memory status`
+- Diagnostics: `hermes doctor`
 
 ## LLM and embeddings
 
-- **Provider:** OpenRouter (single API key for everything possible).
-- **Chat model:** DeepSeek high-reasoning variant via OpenRouter (slug
-  confirmed at execution time).
+- **Chat runtime:** Hermes OpenAI Codex OAuth, imported from the local Codex CLI
+  login.
 - **Embeddings (primary):** OpenRouter embedding model.
 - **Embeddings (fallback):** Ollama + `nomic-embed-text` local
   (`http://localhost:11434`).
@@ -22,26 +20,26 @@
 
 ## Memory plugin
 
-- `@cognee/cognee-openclaw` (manifest id `cognee-openclaw`).
+- Hermes plugin: `cognee-memory`.
 - Indexes `MEMORY.md` and `memory/` into LanceDB (vectors) + Kuzu (graph) +
   SQLite (relational), under `.cognee_system/` (gitignored).
-- Pre-run context injection is automatic. The agent does not call Cognee
-  directly. Writing/editing/deleting files in `memory/` triggers re-sync.
+- Pre-run context injection is automatic. The provider searches Cognee first
+  and falls back to direct file-memory search if the vector store is unhealthy.
 - Setup notes: `docs/cognee-setup.md`.
 
 ## Messenger plugin
 
-- Path: `plugins/openclaw-messenger/`.
+- Hermes plugin path: `hermes/plugins/messenger-platform/`.
 - Primary user channel via Meta Graph API.
 - Webhook smoke test:
   ```bash
-  curl 'http://127.0.0.1:18789/messenger/webhook?hub.mode=subscribe&hub.verify_token=TEST&hub.challenge=abc123'
+  curl 'http://127.0.0.1:18891/messenger/webhook?hub.mode=subscribe&hub.verify_token=TEST&hub.challenge=abc123'
   ```
 - Public exposure (deferred): Tailscale Funnel — see plugin README.
 
 ## Composio limited plugin
 
-OpenClaw-native tools for the allowed connected services only:
+Hermes tools for the allowed connected services only:
 
 - `composio_status`
 - `composio_gmail_personal`
@@ -62,7 +60,7 @@ No GOG dependency is part of the active Albert runtime.
 ## Scheduled jobs
 
 ```bash
-openclaw cron list --json
+hermes cron list
 ```
 
 Expected:
@@ -75,7 +73,8 @@ Expected:
 ## Secrets
 
 Do not commit: API keys, tokens, passwords, cookies, private SSH keys,
-OpenClaw runtime config, `.env.cognee`, OAuth credentials, `.cognee_system/`.
+Hermes/OpenClaw runtime config, `.env.cognee`, OAuth credentials,
+`.cognee_system/`.
 
 ## Search
 

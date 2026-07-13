@@ -1,4 +1,7 @@
-# OpenClaw Setup
+# Legacy OpenClaw Setup
+
+Albert's active runtime is Hermes. This page is retained only as migration
+reference for the previous OpenClaw setup.
 
 ## Use The Albert Folder As Workspace
 

@@ -1,6 +1,6 @@
 # Architecture — Albert
 
-Albert is one Messenger-first OpenClaw agent for Kristian Bilstrup. The goal
+Albert is one Messenger-first Hermes agent for Kristian Bilstrup. The goal
 is practical help and understanding-first belief change: keep commitments
 visible, make daily life easier, track what Kristian is trying to understand,
 and notice evidence-backed patterns without turning the assistant into a
@@ -9,17 +9,17 @@ therapist or mythology engine.
 ## Runtime shape
 
 ```txt
-Facebook Messenger ─▶ OpenClaw gateway ─▶ Albert workspace
+Facebook Messenger ─▶ Hermes gateway ─▶ Albert workspace
                                       │
-                                      ├─ openclaw-messenger plugin
-                                      ├─ cognee-openclaw indexes albert/memory/
+                                      ├─ messenger-platform plugin
+                                      ├─ cognee-memory searches albert/memory/
                                       ├─ composio-limited tools for Gmail/Calendar/Tasks/LinkedIn
                                       └─ scheduled jobs: morning brief, evening journal, nightly review
 ```
 
 ## Active prompt layers
 
-Use OpenClaw's native workspace files only:
+Use Hermes workspace files only:
 
 ```txt
 albert/

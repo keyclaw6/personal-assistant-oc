@@ -18,6 +18,7 @@
     "test:e2e:scripts": "node --test test/e2e/*.test.mjs",
     "test": "npm run test:e2e:scripts",
     "cognee": "bash scripts/cognee-server.sh",
+    "hermes:migrate": "node scripts/hermes-migrate-local.mjs",
     "secrets:export": "node scripts/secrets-export.mjs",
     "secrets:import": "node scripts/secrets-import.mjs",
     "repo:check": "node scripts/repo-check.mjs",

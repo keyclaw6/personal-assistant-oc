@@ -1,0 +1,44 @@
+name: messenger-platform
+label: Messenger
+kind: platform
+version: 0.1.0
+description: Facebook Messenger platform adapter for Albert on Hermes Agent.
+author: Kristian Bilstrup / Codex
+requires_env:
+  - name: MESSENGER_PAGE_ACCESS_TOKEN
+    description: "Meta page access token"
+    prompt: "Messenger page access token"
+    password: true
+  - name: MESSENGER_APP_SECRET
+    description: "Meta app secret used for webhook signature verification"
+    prompt: "Messenger app secret"
+    password: true
+  - name: MESSENGER_VERIFY_TOKEN
+    description: "Webhook verification token"
+    prompt: "Messenger verify token"
+    password: true
+optional_env:
+  - name: MESSENGER_WEBHOOK_PATH
+    description: "Webhook path, default /messenger/webhook"
+    prompt: "Webhook path"
+    password: false
+  - name: MESSENGER_HOST
+    description: "Webhook bind host, default 127.0.0.1"
+    prompt: "Webhook host"
+    password: false
+  - name: MESSENGER_PORT
+    description: "Webhook bind port, default 18891"
+    prompt: "Webhook port"
+    password: false
+  - name: MESSENGER_ALLOWED_USERS
+    description: "Comma-separated Messenger sender IDs allowed to DM Albert"
+    prompt: "Allowed Messenger user IDs"
+    password: false
+  - name: MESSENGER_ALLOW_ALL_USERS
+    description: "Allow any Messenger user. Mirrors the previous OpenClaw plugin when no allowlist exists."
+    prompt: "Allow all users? true/false"
+    password: false
+  - name: MESSENGER_HOME_CHANNEL
+    description: "Default Messenger sender ID for cron/script delivery"
+    prompt: "Home channel ID"
+    password: false
