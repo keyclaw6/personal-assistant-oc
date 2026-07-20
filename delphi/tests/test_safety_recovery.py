@@ -16,6 +16,18 @@ import orchestrator  # noqa: E402
 import resolve  # noqa: E402
 
 
+def orchestrator_metric():
+    return {
+        "schema": 1,
+        "type": "tsv_aggregate",
+        "path": "ledger/results.tsv",
+        "where": {},
+        "aggregate": "count",
+        "comparator": ">=",
+        "threshold": 0,
+    }
+
+
 class JudgeEligibilityTests(unittest.TestCase):
     def setUp(self):
         self.signal = {"leaker_id": "x-a", "call_class": "timing",
@@ -60,6 +72,20 @@ class JudgeEligibilityTests(unittest.TestCase):
                 self.signal, self.leakers, [], self.thresholds)
         self.assertIsNone(status)
         self.assertIn("retrying", reason)
+
+    def test_noncanonical_liquidity_is_retryable_before_quote(self):
+        for liquidity in (float("nan"), float("inf"), "bad", -1, True,
+                          "1e3", "1000.0000001"):
+            market = {**self.market, "liquidity": liquidity}
+            with self.subTest(liquidity=liquidity), \
+                    mock.patch.object(judge.pm, "get_market",
+                                      return_value=market), \
+                    mock.patch.object(judge, "executable_ask") as ask:
+                _, _, status, reason = judge.eligibility(
+                    self.signal, self.leakers, [], self.thresholds)
+                self.assertIsNone(status)
+                self.assertIn("retrying", reason)
+                ask.assert_not_called()
 
         _, _, status, reason = self.check(ask=None)
         self.assertIsNone(status)
@@ -136,44 +162,65 @@ class OrchestratorRecoveryTests(unittest.TestCase):
         (root / "ledger").mkdir()
         (agent / "EXPERIMENTS.md").write_text("", encoding="utf-8")
         (root / "ledger" / "learnings.md").write_text("", encoding="utf-8")
+        (root / "ledger" / "results.tsv").write_text(
+            "ts\tscript\tdomain\tsummary\n", encoding="utf-8")
         return tmp, root, agent
 
     def test_config_before_image_exists_before_patch(self):
         tmp, root, agent = self.harness()
         self.addCleanup(tmp.cleanup)
         state = {"sources": {"history_days": 365}}
-
-        def patch_config(patch):
-            meta = json.loads((agent / "experiments" / "exp.json").read_text())
-            self.assertEqual(meta["patch_before"], {"sources.history_days": 365})
-            state["sources"]["history_days"] = patch["sources.history_days"]
-            return True, "patched sources.history_days"
+        (root / "config.json").write_text(json.dumps(state), encoding="utf-8")
 
         cfg = {"orchestrator": {"editable_files_regex": "^$"}}
         with (mock.patch.object(orchestrator, "ROOT", root),
-              mock.patch.object(orchestrator, "agent_dir", return_value=agent),
-              mock.patch.object(orchestrator, "load_config",
-                                side_effect=lambda: copy.deepcopy(state)),
-              mock.patch.object(orchestrator, "config_patch", side_effect=patch_config)):
+              mock.patch.object(orchestrator, "agent_dir", return_value=agent)):
             outcome = orchestrator.apply_amendment(
                 cfg, {"id": "exp", "kind": "config",
-                      "patch": {"sources.history_days": 180}})
+                      "patch": {"sources.history_days": 180},
+                      "metric": orchestrator_metric()})
         self.assertIn("patched", outcome)
-        self.assertEqual(state["sources"]["history_days"], 180)
+        self.assertEqual(json.loads((root / "config.json").read_text())
+                         ["sources"]["history_days"], 180)
+        evidence_dirs = [path for path in (agent / "experiments").iterdir()
+                         if path.is_dir()]
+        self.assertEqual(len(evidence_dirs), 1)
+        meta = json.loads((evidence_dirs[0] / "meta.json").read_text())
+        self.assertEqual(meta["amendment"]["patch_before"],
+                         {"sources.history_days": 365})
 
-    def test_failed_revert_remains_live_and_retryable(self):
+    def test_failed_revert_remains_primary_pending_and_retryable(self):
         tmp, root, agent = self.harness()
         self.addCleanup(tmp.cleanup)
         exp = agent / "EXPERIMENTS.md"
-        exp.write_text("| exp | now | change | metric | 24h | live |\n", encoding="utf-8")
+        exp.write_text(orchestrator.EXPERIMENTS_TEMPLATE, encoding="utf-8")
+        (root / "prompts").mkdir()
+        (root / "prompts" / "heartbeat.md").write_text("before", encoding="utf-8")
+        cfg = {"orchestrator": {"editable_files_regex":
+               r"^prompts/(explorer|heartbeat|judge)\.md$"}}
+        with (mock.patch.object(orchestrator, "ROOT", root),
+              mock.patch.object(orchestrator, "agent_dir", return_value=agent)):
+            orchestrator.apply_amendment(
+                cfg, {"kind": "file", "path": "prompts/heartbeat.md",
+                      "content": "after", "metric": orchestrator_metric()})
+            journal = agent / "experiments" / orchestrator.APPLY_JOURNAL
+            exp_id = journal.read_text().splitlines()[1].split("\t")[1]
+            row = orchestrator._load_journal(cfg)[1][0]
+            due = orchestrator._review_due_epoch(row)
+            result = orchestrator.review_candidates(
+                cfg, now_epoch=due)[0]["metric_result"]
         with (mock.patch.object(orchestrator, "ROOT", root),
               mock.patch.object(orchestrator, "agent_dir", return_value=agent),
+              mock.patch.object(orchestrator, "load_config", return_value=cfg),
               mock.patch.object(orchestrator, "_restore",
                                 return_value=(False, "restore readback failed"))):
             notes = orchestrator.review_experiments(
-                [{"id": "exp", "verdict": "revert", "reason": "worse"}])
-        self.assertEqual(notes, ["exp:revert-error"])
-        self.assertIn("| live |", exp.read_text(encoding="utf-8"))
+                [{"id": exp_id, "verdict": "revert", "reason": "worse",
+                  "metric_result": result}], now_epoch=due)
+        self.assertEqual(notes, [f"{exp_id}:revert-error"])
+        self.assertIn("| revert-pending |", exp.read_text(encoding="utf-8"))
+        self.assertEqual(journal.read_text().splitlines()[-1].split("\t")[2],
+                         "revert_prepared")
         self.assertIn("retryable-error",
                       (root / "ledger" / "learnings.md").read_text(encoding="utf-8"))
 
@@ -185,20 +232,24 @@ class OrchestratorRecoveryTests(unittest.TestCase):
         (experiments / "cfg.json").write_text(json.dumps({
             "kind": "config", "patch_before": {"sources.history_days": 365},
         }), encoding="utf-8")
+        (root / "config.json").write_text(
+            json.dumps({"sources": {"history_days": 180}}), encoding="utf-8")
+        cfg = {"orchestrator": {"editable_files_regex": "^$"},
+               "sources": {"history_days": 180}}
         with (mock.patch.object(orchestrator, "ROOT", root),
               mock.patch.object(orchestrator, "agent_dir", return_value=agent),
-              mock.patch.object(orchestrator, "config_patch",
-                                return_value=(True, "patched")),
-              mock.patch.object(orchestrator, "load_config",
-                                return_value={"sources": {"history_days": 180}})):
+              mock.patch.object(orchestrator, "load_config", return_value=cfg),
+              mock.patch.object(orchestrator, "_atomic_replace_controlled")):
             ok, reason = orchestrator._restore("cfg")
         self.assertFalse(ok)
         self.assertIn("readback failed", reason)
 
-        target = root / "prompt.md"
+        (root / "prompts").mkdir()
+        target = root / "prompts" / "heartbeat.md"
         target.write_text("before", encoding="utf-8")
         (experiments / "file.json").write_text(
-            json.dumps({"kind": "file", "path": "prompt.md"}), encoding="utf-8")
+            json.dumps({"kind": "file", "path": "prompts/heartbeat.md"}),
+            encoding="utf-8")
         (experiments / "file.before").write_text("before", encoding="utf-8")
         (experiments / "file.after").write_text("after", encoding="utf-8")
         with (mock.patch.object(orchestrator, "ROOT", root),

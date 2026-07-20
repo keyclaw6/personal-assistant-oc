@@ -36,19 +36,20 @@ class LLMBackendSmokeTests(unittest.TestCase):
 
         def fake_run(cmd, **kwargs):
             codex_calls.append((cmd, kwargs))
-            return subprocess.CompletedProcess(cmd, 0, stdout=b"ok", stderr=b"")
+            outfile = Path(cmd[cmd.index("--output-last-message") + 1])
+            outfile.write_text("ok", encoding="utf-8")
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(llm, "tmp_dir", return_value=Path(tmp)), \
              patch.object(llm.subprocess, "run", side_effect=fake_run), \
-             patch.object(llm.urllib.request, "urlopen", return_value=_HTTPResponse()) as urlopen, \
-             patch.dict(llm.os.environ, {"OPENROUTER_API_KEY": "test"}):
+             patch.object(llm.urllib.request, "urlopen", return_value=_HTTPResponse()) as urlopen:
             for role in cfg["roles"]:
                 self.assertEqual("ok", llm.call(role, "smoke", cfg))
 
-        self.assertEqual(3, len(codex_calls))
+        self.assertEqual(4, len(codex_calls))
         self.assertTrue(all(call[1]["cwd"] == str(lib.ROOT) for call in codex_calls))
-        urlopen.assert_called_once()
+        urlopen.assert_not_called()
 
 
 class ExplorerValidationTests(unittest.TestCase):
@@ -94,6 +95,7 @@ class ExplorerCompletionTests(unittest.TestCase):
         # Deliberately newest-first, as the real source adapters return them.
         return [
             {
+                "id": f"post-{i}",
                 "ts": f"2026-01-{1 + i // 24:02d}T{i % 24:02d}:00:00Z",
                 "url": f"post-{i}",
                 "text": f"claim {i}",

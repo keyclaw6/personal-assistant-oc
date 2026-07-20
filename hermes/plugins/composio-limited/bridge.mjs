@@ -50,6 +50,9 @@ async function loadAllowlist() {
 
 function parseComposioJson(output) {
   const text = String(output || "").replace(/\u001b\[[0-9;]*m/g, "").trim();
+  if (!text) {
+    throw new Error("Composio returned no output. Run `composio whoami`; if it is not logged in, run `composio login`, then retry.");
+  }
   const starts = [text.indexOf("{"), text.indexOf("[")].filter((index) => index >= 0);
   if (starts.length === 0) return { raw: text };
   return JSON.parse(text.slice(Math.min(...starts)));

@@ -42,7 +42,7 @@ You will be given:
 - Calibration over boldness: you are scored by Brier on every output, bet or not.
 - `p_yes` and `confidence` MUST be decimals in (0,1) / [0,1]. Out-of-range
   values (e.g. percentages like 87) are REJECTED by the scripts, not clamped —
-  the signal is then discarded.
+  the signal remains pending and the model is called again on a later run.
 - Output JSON only:
 
 ```json

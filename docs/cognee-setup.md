@@ -13,7 +13,7 @@ Files remain the source of truth. Cognee provides retrieval only.
 ## Architecture
 
 ```
-albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Kuzu + LanceDB + SQLite
+albert/memory/*.md  ──▶  Cognee API server (127.0.0.1:8001)  ──▶  Kuzu + LanceDB + SQLite
                        ▲
                        │
             Hermes plugin (cognee-memory)
@@ -27,15 +27,15 @@ albert/memory/*.md  ──▶  Cognee API server (localhost:8000)  ──▶  Ku
    npm run hermes:migrate
    ```
 
-2. **Start the Cognee server**:
+2. **Install and start the Cognee user service**:
    ```bash
-   bash scripts/cognee-server.sh start
+   npm run cognee -- install
    ```
 
 3. **Verify**:
    ```bash
-   hermes memory status
-   curl -fsS http://127.0.0.1:8000/health
+   npm run cognee -- status
+   curl -fsS http://127.0.0.1:8001/health
    ```
 
 4. **Legacy index maintenance**:
@@ -66,17 +66,43 @@ Key variables:
 | `GRAPH_DATABASE_PROVIDER` | `kuzu` | File-based graph store |
 | `DB_PROVIDER` | `sqlite` | File-based relational store |
 | `SYSTEM_ROOT_DIRECTORY` | `<repo>/.cognee_system` | Cognee runtime data |
+| `ENABLE_BACKEND_ACCESS_CONTROL` | `true` | Preserve per-user datasets and permissions |
+| `REQUIRE_AUTHENTICATION` | `false` | Existing setting; access control still enforces authentication |
 
 ## Cognee server management
 
 ```bash
-bash scripts/cognee-server.sh start    # Start server
-bash scripts/cognee-server.sh stop     # Stop server
-bash scripts/cognee-server.sh status   # Check if running
-bash scripts/cognee-server.sh restart  # Restart
+npm run cognee -- install  # Install, enable, and start the tracked user service
+npm run cognee -- start    # Start the installed service
+npm run cognee -- stop     # Stop the service
+npm run cognee -- status   # Verify systemd plus Cognee identity/readiness
+npm run cognee -- restart  # Restart the service
+npm run cognee -- health   # Verify the endpoint is Cognee, not another app
 ```
 
-Server logs: `/tmp/cognee-server.log`
+The service is supervised by user systemd and survives login/reboot. Its tracked
+unit is `systemd/user/cognee-server.service`; the installed copy is
+`~/.config/systemd/user/cognee-server.service`. Cognee's upstream file handler
+is disabled because exception tracebacks can include provider configuration.
+The foreground service removes configured secrets and key fragments from both
+output streams before copying them to the systemd journal. Journald owns
+persistence, rotation, and size limits. The wrapper does not write a custom log
+file:
+
+```bash
+journalctl --user -u cognee-server.service
+```
+
+For operational diagnostics, use `npm run cognee -- status`,
+`npm run cognee -- health`, and the sanitized journal. Historical files under
+`~/.cognee/logs/` predate this hardening and include a fragment of an
+already-invalid provider credential; treat those files as sensitive history.
+The earlier sanitized files under `~/.local/state/cognee/server.log*` are also
+left untouched. New service runs write to neither location.
+
+`run` is the foreground command used by systemd. It binds only to loopback,
+defaults to port 8001, runs one Uvicorn worker, and refuses to start if that
+port is already occupied. Port 8000 remains assigned to the GitHub MCP service.
 
 ## OpenClaw plugin commands
 
@@ -121,7 +147,7 @@ EMBEDDING_DIMENSIONS=384
 Then restart the Cognee server and re-index:
 
 ```bash
-bash scripts/cognee-server.sh restart
+npm run cognee -- restart
 openclaw cognee index
 ```
 

@@ -311,12 +311,13 @@ outputs must produce an honest retry/skip/rejection, never invented success.
 ### External contracts
 
 Verify current behavior against authoritative documentation and, where safe,
-read-only probes for Reddit, X, Exa, Polymarket Gamma/CLOB, Cognee, Codex CLI,
-and OpenRouter. Check pagination, maximum result limits, inclusive/exclusive
-time bounds, timestamp precision, stable IDs, rate-limit/error shapes, market
-resolution fields, token/side mapping, order-book orientation, model identity,
-and subprocess output shape. A mock counts only if it reproduces the relevant
-real contract. If credentials or network access are unavailable, mark the
+read-only probes for Reddit, X, Exa, Polymarket Gamma/CLOB, Cognee, and Codex
+CLI. Check pagination, maximum result limits, inclusive/exclusive time bounds,
+timestamp precision, stable IDs, rate-limit/error shapes, market resolution
+fields, token/side mapping, order-book orientation, saved OAuth availability,
+requested model, schema-constrained subprocess output, and cleanup behavior. A
+mock counts only if it reproduces the relevant real contract. If credentials or
+network access are unavailable, mark the
 claim `UNVERIFIED`; do not silently infer `PASS`.
 
 ### Accounting and measurement honesty
@@ -337,10 +338,11 @@ Verify the real deployment path rather than only isolated functions:
 - the actual installed scheduler and entries on the target machine, their
   restart/reboot persistence, recent invocation evidence, and recent logs—not
   merely whether `crontab.example` looks plausible;
-- `dotenvx run -f .env.delphi` wiring and presence of required key names without
-  printing or decrypting secret values into the report;
-- configured models, installed/logged-in Codex CLI, OpenRouter/provider access,
-  and honest behavior when any dependency is unavailable;
+- `dotenvx run -f .env.delphi` wiring and presence of required non-LLM provider
+  key names without printing or decrypting secret values into the report;
+- configured models and installed/logged-in Codex CLI from the cron-like
+  `PATH`/`CODEX_HOME` environment, without reading or copying Codex auth files,
+  plus honest behavior when any dependency is unavailable;
 - Polymarket reachability, market/price data semantics, and rate-limit handling;
 - Cognee's `delphi-trading` dataset isolation and file-source-of-truth fallback;
 - writable paths, atomic rename assumptions, shared-lock availability, logs,
@@ -356,11 +358,11 @@ Verify the real deployment path rather than only isolated functions:
 
 Explicitly verify, rather than overlooking, these current-checkout facts:
 
-- `crontab.example` contains a `/Users/kristian/...` repository path while the
-  stated target checkout is `/home/kab/...`.
-- At prompt creation time the target machine had no `crontab` executable and no
-  `delphi/tmp/` directory. Re-check current machine state; do not assume this is
-  still true, and mark it `UNVERIFIED` if reviewing only the remote repository.
+- `crontab.example` targets `/home/kab/...` and exports the explicit `PATH` and
+  `CODEX_HOME` needed to reuse the Codex CLI's ChatGPT login. Verify those
+  assumptions from a clean cron-like environment without inspecting auth data.
+- Re-check whether the target machine has a scheduler and `delphi/tmp/`; do not
+  infer installation or recent execution from the example file alone.
 - `candidates.tsv`, `positions.tsv`, `resolved.tsv`, `signals.tsv`, and
   `ledger/results.tsv` currently contain only headers; `leakers.tsv` has roster
   rows but this is not prospective trading evidence.

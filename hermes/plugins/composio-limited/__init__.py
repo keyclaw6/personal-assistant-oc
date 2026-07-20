@@ -124,18 +124,18 @@ def register(ctx) -> None:
     ctx.register_tool(
         name="composio_calendar",
         toolset="composio-limited",
-        schema=_schema("composio_calendar", "Execute Google Calendar tools for the allowed calendar account.", account_enum=["googlecalendar_deave-cheer"]),
-        handler=_handle_execute("composio_calendar", toolkit="googlecalendar"),
+        schema=_schema("composio_calendar", "Execute Google Calendar tools for the allowed calendar account.", fixed_account="googlecalendar_deave-cheer"),
+        handler=_handle_execute("composio_calendar", fixed_account="googlecalendar_deave-cheer"),
     )
     ctx.register_tool(
         name="composio_tasks",
         toolset="composio-limited",
-        schema=_schema("composio_tasks", "Execute Google Tasks tools for the allowed tasks account.", account_enum=["googletasks_urial-mon"]),
-        handler=_handle_execute("composio_tasks", toolkit="googletasks"),
+        schema=_schema("composio_tasks", "Execute Google Tasks tools for the allowed tasks account.", fixed_account="googletasks_urial-mon"),
+        handler=_handle_execute("composio_tasks", fixed_account="googletasks_urial-mon"),
     )
     ctx.register_tool(
         name="composio_linkedin",
         toolset="composio-limited",
-        schema=_schema("composio_linkedin", "Execute LinkedIn tools for the allowed LinkedIn account.", account_enum=["linkedin_mbuba-doing"]),
-        handler=_handle_execute("composio_linkedin", toolkit="linkedin"),
+        schema=_schema("composio_linkedin", "Execute LinkedIn tools for the allowed LinkedIn account.", fixed_account="linkedin_mbuba-doing"),
+        handler=_handle_execute("composio_linkedin", fixed_account="linkedin_mbuba-doing"),
     )

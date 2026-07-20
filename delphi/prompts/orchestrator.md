@@ -32,7 +32,10 @@ instead of amending.
    stuck in probation for mechanical reasons (unpriced history, too-strict
    matching, too-small history window)?
 4. **Calibration**: judge Brier by call_class; over/under-confidence patterns.
-5. **Experiments due for review**: keep or revert, on the stated metric only.
+5. **Experiments due for review**: review only IDs listed in the primary-journal
+   due section. Copy its `metric_result` object exactly into your verdict. Keep
+   only when `satisfied` is true; otherwise revert. Never calculate or narrate
+   a replacement metric value.
 
 ## Your authority (script-enforced — stay inside it)
 
@@ -52,7 +55,7 @@ instead of amending.
 {
   "observations": "3-8 sentences: state of the machine vs the goal, citing evidence",
   "amendment": null,
-  "experiments_review": [{"id": "exp-...", "verdict": "keep|revert", "reason": "..."}],
+  "experiments_review": [{"id": "exp-...", "verdict": "keep|revert", "reason": "...", "metric_result": {"copy": "the exact supplied object"}}],
   "note": "dated workspace note content (markdown), always present",
   "lessons": ["optional, max 2, only if genuinely new"]
 }
@@ -60,9 +63,17 @@ instead of amending.
 
 When amending, `amendment` is one of:
 ```json
-{"kind": "file", "path": "prompts/heartbeat.md", "content": "FULL new file content", "rationale": "...", "metric": "...", "review_after_hours": 24, "id": "exp-YYYYMMDD-slug"}
-{"kind": "config", "patch": {"thresholds.min_liquidity_usd": 500}, "rationale": "...", "metric": "...", "review_after_hours": 24, "id": "exp-YYYYMMDD-slug"}
+{"kind": "file", "path": "prompts/heartbeat.md", "content": "FULL new file content", "rationale": "...", "metric": {"schema": 1, "type": "tsv_aggregate", "path": "domains/ai-releases/signals.tsv", "where": {"status": "no_market"}, "aggregate": "count", "comparator": "<=", "threshold": 5}, "review_after_hours": 24}
+{"kind": "config", "patch": {"sources.history_days": 180}, "rationale": "...", "metric": {"schema": 1, "type": "tsv_aggregate", "path": "domains/ai-releases/leakers.tsv", "where": {"status": "verified"}, "aggregate": "count", "comparator": ">=", "threshold": 3}, "review_after_hours": 24}
 ```
-`path` must match the editable-files allowlist; blocked config keys are
+The only metric contract is the fixed TSV aggregate above. `path` must be
+`ledger/results.tsv` or `domains/<domain>/<file>.tsv`; `where` is exact string
+equality; `aggregate` is `count`, `sum`, or `mean` (`sum`/`mean` also require a
+`column`); comparator is `<`, `<=`, `==`, `>=`, or `>`, and threshold is a
+bounded canonical decimal with no whitespace, plus sign, leading zero,
+exponent, or trailing fractional zero. The script reads and validates the file itself.
+Sums are exact. Means are rounded half-even once at 100 decimal places; that
+same rounded value is serialized and compared with the threshold.
+The amendment's target `path` must match the editable-files allowlist; blocked config keys are
 rejected by the script — do not attempt them. If a needed change exceeds your
 authority, say so in the note instead.

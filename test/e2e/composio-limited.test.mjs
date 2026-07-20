@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { formatComposioFailure } from "../../plugins/openclaw-composio-limited/src/composio-errors.js";
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("formats Composio 401 failures as re-auth instructions", () => {
   const message = formatComposioFailure({
@@ -41,4 +46,24 @@ test("preserves unrelated Composio failures verbatim", () => {
   });
 
   assert.equal(message, "some other composio error");
+});
+
+test("Hermes bridge fails closed when Composio exits successfully without output", () => {
+  const result = spawnSync(process.execPath, [
+    path.join(repo, "hermes/plugins/composio-limited/bridge.mjs"),
+    "execute",
+    JSON.stringify({
+      account: "googlecalendar_deave-cheer",
+      tool: "GOOGLECALENDAR_GET_CURRENT_DATE_TIME",
+      arguments: {},
+    }),
+  ], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, COMPOSIO_BIN: "/usr/bin/true" },
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Composio returned no output/);
+  assert.match(result.stderr, /composio login/);
 });

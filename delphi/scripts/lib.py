@@ -11,12 +11,51 @@ import json
 import math
 import os
 import re
+import shutil
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
 from pathlib import Path
 
+from source_timestamps import SourceTimestampError, validate_source_timestamp
+
 ROOT = Path(__file__).resolve().parent.parent  # delphi/
+CANONICAL_MAX_ENTRY_PRICE = Decimal("0.990")
+_CANONICAL_UTC_TIMESTAMP = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
+
+
+def validate_kickstart_cutoff(value: object) -> datetime:
+    """Parse the one canonical UTC form accepted by config and cron."""
+    if type(value) is not str or not _CANONICAL_UTC_TIMESTAMP.fullmatch(value):
+        raise ValueError("kickstart.active_until must be canonical UTC")
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise ValueError(
+            "kickstart.active_until is not a valid UTC timestamp") from exc
+    if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+        raise ValueError("kickstart.active_until is not canonical")
+    return parsed
+
+
+def canonical_position_shares(size: Decimal, entry: Decimal) -> Decimal:
+    """Return exact paper shares from canonical cents/three-decimal fill."""
+    if (type(size) is not Decimal or type(entry) is not Decimal
+            or not size.is_finite() or not entry.is_finite()
+            or max(0, -size.as_tuple().exponent) != 2
+            or max(0, -entry.as_tuple().exponent) != 3
+            or size < Decimal("1.00")
+            or not Decimal("0") < entry <= CANONICAL_MAX_ENTRY_PRICE):
+        raise ValueError("invalid canonical position economics")
+    try:
+        return (size / entry).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+    except InvalidOperation as exc:
+        raise ValueError("position shares are outside safe range") from exc
 
 
 # ---------- config / paths ----------
@@ -89,6 +128,44 @@ def append_tsv(path: Path, row: dict) -> None:
         f.write("\t".join(_clean(row.get(c, "")) for c in cols) + "\n")
 
 
+def append_tsv_atomic(path: Path, row: dict) -> None:
+    """Logically append one row through a durable full-file replacement.
+
+    The temporary file lives beside the destination, which keeps os.replace
+    on one filesystem. Existing bytes are copied verbatim; if an interrupted
+    legacy append left no row terminator, that evidence is preserved as its
+    own incomplete row before the new complete row is appended.
+    """
+    path = Path(path)
+    cols = tsv_columns(path)
+    payload = ("\t".join(_clean(row.get(c, "")) for c in cols) + "\n").encode()
+    mode = path.stat().st_mode & 0o7777
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w+b") as dst, open(path, "rb") as src:
+            shutil.copyfileobj(src, dst)
+            if dst.tell():
+                dst.seek(-1, os.SEEK_END)
+                if dst.read(1) != b"\n":
+                    dst.seek(0, os.SEEK_END)
+                    dst.write(b"\n")
+            dst.seek(0, os.SEEK_END)
+            dst.write(payload)
+            os.fchmod(dst.fileno(), mode)
+            dst.flush()
+            os.fsync(dst.fileno())
+        os.replace(tmp, path)
+        dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def write_tsv(path: Path, rows: list[dict]) -> None:
     """Full rewrite, ATOMIC (tmp + os.replace) so a concurrent reader never sees
     a torn file and a crash never leaves a truncated one (F4)."""
@@ -132,14 +209,6 @@ def extract_json(text: str):
 
 # ---------- gate math (PROGRAM.md §2) ----------
 
-def kelly(p: float, price: float) -> float:
-    """Kelly fraction for buying a binary share at `price` with win prob `p`."""
-    if price <= 0.0 or price >= 1.0:
-        return 0.0
-    b = (1.0 - price) / price
-    f = (p * b - (1.0 - p)) / b
-    return max(0.0, f)
-
 
 def side_values(side: str, p_yes: float, price_yes: float) -> tuple[float, float]:
     """Return (p_side, price_side) for YES or NO."""
@@ -153,12 +222,62 @@ def compute_edge(side: str, p_yes: float, price_yes: float, slippage: float) -> 
     return p_side - price_side - slippage
 
 
-def position_size(p_side: float, price_side: float, bankroll: float, th: dict) -> float:
-    raw = th["kelly_fraction"] * kelly(p_side, price_side) * bankroll
-    return round(min(raw, th["max_stake_frac"] * bankroll), 2)
-
-
 # ---------- leaker stats (deterministic accounting) ----------
+
+def _canonical_credit_identifier(value) -> str | None:
+    if (type(value) is not str or not value or value != value.strip()
+            or not all(char.isprintable() and not char.isspace()
+                       for char in value)):
+        return None
+    return value
+
+
+def score_credit_key(leaker_id, market_id) -> tuple[str, str] | None:
+    """Return the exact validated ``(leaker_id, market_id)`` credit key.
+
+    Event IDs are context only. Invalid identities cannot own or collapse a
+    credit bucket.
+    """
+    if (_canonical_credit_identifier(leaker_id) is None
+            or _canonical_credit_identifier(market_id) is None):
+        return None
+    return leaker_id, market_id
+
+
+def score_credit_order_key(signal: dict, *, require_source: bool = False,
+                           now=None) -> tuple[str, str, str] | None:
+    """Return canonical source order, with signal ID fallback for legacy rows."""
+    try:
+        post_ts = validate_source_timestamp(signal.get("post_ts"), now=now)
+    except SourceTimestampError:
+        return None
+    fallback = _canonical_credit_identifier(signal.get("signal_id"))
+    if fallback is None:
+        return None
+    if "source_post_id" not in signal:
+        if require_source:
+            return None
+        source_post_id = fallback
+    else:
+        source_post_id = _canonical_credit_identifier(
+            signal.get("source_post_id"))
+        if source_post_id is None:
+            return None
+    return post_ts, source_post_id, fallback
+
+
+def score_credit_price(value) -> float | None:
+    """Return a finite prediction-market call price in the inclusive unit range."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and (not value or value != value.strip()):
+        return None
+    try:
+        price = float(value)
+    except (TypeError, ValueError):
+        return None
+    return price if math.isfinite(price) and 0.0 <= price <= 1.0 else None
+
 
 def wilson_lower(hits: int, n: int, z: float = 1.2816) -> float:
     """One-sided Wilson lower confidence bound on a binomial proportion.
@@ -201,12 +320,15 @@ def update_leaker_stats(row: dict, hit: bool, price_at_call: float | None,
     hit_rate = hits2 / n2
     lcb = wilson_lower(hits2, n2, float(th.get("verify_z", 1.2816)))
     edge_lcb = lcb - avg_p2
+    edge_lcb_text = f"{edge_lcb:.3f}"
+    if edge_lcb_text == "-0.000":
+        edge_lcb_text = "0.000"
     row.update({
         "n_calls": n2, "hits": hits2,
         "hit_rate": f"{hit_rate:.3f}",
         "avg_price_at_call": f"{avg_p2:.3f}",
         "est_edge": f"{hit_rate - avg_p2:.3f}",
-        "edge_lcb": f"{edge_lcb:.3f}",
+        "edge_lcb": edge_lcb_text,
     })
     prior = row.get("status", "candidate")
     if prior != "retired":
@@ -298,7 +420,7 @@ def append_lessons(name: str, lessons) -> int:
 # founder-only. The spec lives in code, which no agent can edit.
 
 CONFIG_PATCH_ALLOWED: dict[str, tuple[str, tuple | None]] = {
-    "kickstart.active_until":                    ("str",  None),
+    "kickstart.active_until":                    ("utc",  None),
     "kickstart.explorer_max_candidates_per_run": ("int",  (1, 12)),
     "sources.explorer_max_candidates_per_run":   ("int",  (1, 8)),
     "sources.history_days":                      ("int",  (30, 365)),
@@ -311,6 +433,12 @@ CONFIG_PATCH_ALLOWED: dict[str, tuple[str, tuple | None]] = {
 
 
 def _valid_value(val, kind: str, bound) -> bool:
+    if kind == "utc":
+        try:
+            validate_kickstart_cutoff(val)
+        except ValueError:
+            return False
+        return True
     if kind == "str":
         return isinstance(val, str) and 0 < len(val) < 200
     if kind == "int":
@@ -323,15 +451,25 @@ def _valid_value(val, kind: str, bound) -> bool:
     return False
 
 
-def config_patch(patch: dict) -> tuple[bool, str]:
-    """Apply {dotted.key: value} onto config.json — allowlisted keys only,
-    type/range validated, atomic write. Returns (ok, message)."""
+def validate_config_patch(patch: dict) -> tuple[bool, str]:
+    """Validate an orchestrator patch without mutating ``config.json``."""
+    if not isinstance(patch, dict) or not patch:
+        return False, "patch must be a non-empty object"
     for key, val in patch.items():
         spec = CONFIG_PATCH_ALLOWED.get(key)
         if spec is None:
             return False, f"key not in allowlist: {key}"
         if not _valid_value(val, spec[0], spec[1]):
             return False, f"invalid value for {key}: {val!r}"
+    return True, f"patched {', '.join(patch)}"
+
+
+def config_patch(patch: dict) -> tuple[bool, str]:
+    """Apply {dotted.key: value} onto config.json — allowlisted keys only,
+    type/range validated, atomic write. Returns (ok, message)."""
+    ok, message = validate_config_patch(patch)
+    if not ok:
+        return False, message
     cfg = load_config()
     for key, val in patch.items():
         node = cfg
@@ -342,7 +480,7 @@ def config_patch(patch: dict) -> tuple[bool, str]:
     tmp = ROOT / "config.json.tmp"
     tmp.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
     os.replace(tmp, ROOT / "config.json")
-    return True, f"patched {', '.join(patch)}"
+    return True, message
 
 
 def normalize_class(call_class: str, cfg: dict, domain: str) -> str:
@@ -427,4 +565,8 @@ def format_aggregate(agg: dict) -> str:
 
 def kickstart_active(cfg: dict) -> bool:
     until = (cfg.get("kickstart") or {}).get("active_until", "")
-    return bool(until) and now_iso() < until
+    try:
+        cutoff = validate_kickstart_cutoff(until)
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) < cutoff

@@ -1,0 +1,27 @@
+[Unit]
+Description=Cognee API server for Albert
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=%h/personal-assistant-oc
+Environment=COGNEE_HOST=127.0.0.1
+Environment=COGNEE_PORT=8001
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=COGNEE_LOG_FILE=false
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/personal-assistant-oc/scripts/cognee-server.sh run
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=90
+TimeoutStopSec=30
+KillMode=mixed
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

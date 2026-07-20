@@ -1,26 +1,35 @@
-# Delphi paper trader — crontab (adjust REPO path; install with `crontab -e`)
-# Prereqs: `mkdir -p ~/personal-assistant-oc/delphi/tmp`, dotenvx, logged-in codex CLI.
+# Delphi paper trader — crontab
+# Managed install markers are added by the one-time rollout; do not install a
+# second copy. Prereqs: writable delphi/tmp, dotenvx, logged-in Codex CLI.
 #
 # F4: ALL state-mutating jobs serialize on ONE shared lock (tmp/state.lock).
 # Heartbeat uses -n (skip if busy — next tick is 10 min away); the others wait.
 
-REPO=/Users/kristian/personal-assistant-oc
-LOCK=delphi/tmp/state.lock
+SHELL=/bin/sh
+MAILTO=""
+CRON_TZ=Europe/Copenhagen
+PATH=/home/kab/.local/bin:/usr/local/bin:/usr/bin:/bin
+CODEX_HOME=/home/kab/.codex
+REPO=/home/kab/personal-assistant-oc
+ENVFILE=/home/kab/personal-assistant-oc/.env.delphi
+ENVKEYS=/home/kab/.config/dotenvx/.env.keys
+LOCK=/home/kab/personal-assistant-oc/delphi/tmp/state.lock
 
 # Heartbeat sweep + judge, every 10 minutes (PROGRAM §2)
-*/10 * * * * cd $REPO && flock -n $LOCK -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/heartbeat.py --domain ai-releases && dotenvx run -f .env.delphi -- python3 delphi/scripts/judge.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+*/10 * * * * cd $REPO && flock -n $LOCK timeout --signal=TERM --kill-after=30s 540s /bin/sh -c 'dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/heartbeat.py --domain ai-releases && dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/judge.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
 
 # Orchestrator — hourly maintenance pass (PROGRAM §6)
-3 * * * * cd $REPO && flock -w 900 $LOCK -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/orchestrator.py' >> delphi/tmp/cron.log 2>&1
+3 * * * * cd $REPO && flock -w 900 $LOCK timeout --signal=TERM --kill-after=30s 900s dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/orchestrator.py >> delphi/tmp/cron.log 2>&1
 
 # Resolver, every 6 hours
-17 */6 * * * cd $REPO && flock -w 900 $LOCK -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/resolve.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+17 */6 * * * cd $REPO && flock -w 900 $LOCK timeout --signal=TERM --kill-after=30s 900s dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/resolve.py --domain ai-releases >> delphi/tmp/cron.log 2>&1
 
-# Explorer — KICKSTART cadence (every 3 h) while config.kickstart is active.
-# After kickstart, comment this line and use the daily line below.
-7 */3 * * * cd $REPO && flock -w 1800 $LOCK -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
-# Post-kickstart daily explorer:
-# 7 6 * * * cd $REPO && flock -w 1800 $LOCK -c 'dotenvx run -f .env.delphi -- python3 delphi/scripts/explorer.py --domain ai-releases' >> delphi/tmp/cron.log 2>&1
+# Explorer — automatic, non-overlapping transition from the strictly validated
+# UTC `config.json` kickstart.active_until. Malformed config runs neither mode.
+7 */3 * * * cd $REPO && { python3 delphi/scripts/schedule_gate.py kickstart && flock -w 1800 $LOCK timeout --signal=TERM --kill-after=30s 1800s dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/explorer.py --domain ai-releases; } >> delphi/tmp/cron.log 2>&1
+7 6 * * * cd $REPO && { python3 delphi/scripts/schedule_gate.py normal && flock -w 1800 $LOCK timeout --signal=TERM --kill-after=30s 1800s dotenvx run -f "$ENVFILE" -fk "$ENVKEYS" -- python3 delphi/scripts/explorer.py --domain ai-releases; } >> delphi/tmp/cron.log 2>&1
 
-# Daily state snapshot — commits ONLY delphi/ paths (isolation, PROGRAM §0)
-49 20 * * * cd $REPO && flock -w 900 $LOCK -c 'git add delphi && (git diff --cached --quiet || git commit -m "delphi: daily state snapshot")' >> delphi/tmp/cron.log 2>&1
+# Daily state snapshot — disabled until .env.delphi is tracked AND the exact
+# `.git/delphi-snapshot-ready` sentinel is deliberately created (README).
+# The script refuses a dirty index and commits only operational/T3 paths.
+49 20 * * * cd $REPO && flock -w 900 $LOCK timeout --signal=TERM --kill-after=30s 900s python3 delphi/scripts/snapshot_state.py >> delphi/tmp/cron.log 2>&1

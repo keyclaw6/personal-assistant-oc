@@ -67,6 +67,8 @@ Expected:
 
 - `morning-brief` — daily 07:30 Europe/Copenhagen.
 - `evening-journal-reminder` — daily 21:00 Europe/Copenhagen.
+- `routine-check-in` — daily 20:30 Europe/Copenhagen; asks for a short adherence
+  report against the active routine experiment.
 - `nightly-review` / `nightly-dream-cycle` compatibility job — nightly local
   review while Kristian sleeps.
 

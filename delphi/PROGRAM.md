@@ -21,10 +21,16 @@ stay deterministic. **Agents think; the scoreboard counts.**
    by scripts, never by an LLM.
 4. **Isolation.** Delphi never reads or writes Albert's or the Hermes
    runtime's files; Albert is not aware of Delphi. In Cognee, Delphi touches
-   only its own dataset (§5). Documented narrow exceptions: the dotenvx env
-   file `.env.delphi` at the repo root (read-only, via `dotenvx run`), the
-   daily git snapshot commit (staged paths scoped to `delphi/` only), and LLM
-   subprocesses launched with `delphi/` as their working directory.
+   only its own dataset (§5). Documented narrow exceptions: the encrypted
+   dotenvx file `.env.delphi` at the repo root (read via `dotenvx run`, and
+   included in the guarded snapshot scope), the daily git snapshot commit,
+   and LLM subprocesses launched with `delphi/` as their working directory.
+   The snapshot remains disabled until `.env.delphi` is tracked in an
+   intentionally reviewed baseline and the exact repo-local
+   `.git/delphi-snapshot-ready` sentinel is created. It then commits only the
+   strict operational/T3 allowlist documented in the README; scripts, tests,
+   governance, arbitrary repository paths, symlinks, and special files stay
+   outside its authority.
 5. **The price at signal/post time is sacred.** A leaker's value is beating the
    price the market offered when they posted — accuracy alone is meaningless.
 6. This file changes only by founder decision.
@@ -47,7 +53,7 @@ same philosophy as the assistant's memory system.
 | Tier | Agent (model) | May do | May not do |
 |---|---|---|---|
 | T3 | **orchestrator** (GPT-5.6 xhigh) | observe everything; ONE amendment per run to prompts / AGENT.md / MEMORY.md curation / domain briefs / guarded config keys; run small logged experiments | touch §0 invariants, ledger history, roles/model config, its own governance block, anything outside `delphi/` |
-| T2 | **judge** (strong, default Opus) | probability + confidence judgment; discretion in weighing evidence; write lessons/notes in own workspace | compute edge/size; open positions directly; edit files outside its workspace |
+| T2 | **judge** (GPT-5.6-Luna high via shared Codex OAuth) | probability + confidence judgment; discretion in weighing evidence; write lessons/notes in own workspace | compute edge/size; open positions directly; edit files outside its workspace |
 | T1 | **explorer / heartbeat** (GPT-5.6-Luna high) | extraction, matching, candidate discovery; discretion in what to chase, how to phrase queries, which leaker to deepen; lessons/notes in own workspace | probabilities of world events; any file outside own workspace |
 | T0 | **scripts** | gates, accounting, file integrity, allowlist enforcement | — |
 
@@ -88,10 +94,10 @@ bet gate:     fill = FRESH EXECUTABLE best ask for the token being bought
               buffer;  edge = p_side − fill ≥ 0.10 AND confidence ≥ 0.60.
               No fresh quote → the signal stays pending. Judge outputs with
               out-of-range p/confidence are REJECTED, never clamped.
-sizing:       min(0.25 × kelly(p_side, fill) × available, 5% × bankroll);
+sizing:       min(0.25 × kelly(p_side, fill) × available, 5% × equity);
               shares = size / fill;  P&L settles those shares at 0/1.
-              (No depth walking: max stake is 5% of a $1k book vs a $1k
-              liquidity floor; the ask+buffer fill is conservative.)
+              (No depth walking: max stake is 5% of current paper equity vs a
+              $1k liquidity floor; the ask+buffer fill is conservative.)
 account:      self-financing — equity = bankroll + realized P&L;
               available = equity − open cost. Status is recomputed on every
               fold, so live results can demote a verified leaker.
@@ -175,8 +181,8 @@ its mitigation, NOT open bugs:
   know outcomes. Mitigated by the extract-everything instruction, the removal
   of the LLM scoreability gate, and prospective re-testing — not eliminable
   in a prototype without immutable archives.
-- **No order-book depth walking**: stakes are capped at 5% of a $1k paper book
-  against a $1k liquidity floor; fills use the executable best ask plus a
+- **No order-book depth walking**: stakes are capped at 5% of current paper
+  equity against a $1k liquidity floor; fills use the executable best ask plus a
   conservative buffer. Bias is against the book, never for it.
 - **Serialized jobs**: heartbeat sweeps may skip while explorer holds the
   state lock; the oldest-first cursor drains any backlog afterwards.

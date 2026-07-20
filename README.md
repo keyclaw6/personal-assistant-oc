@@ -87,9 +87,13 @@ hermes gateway run --accept-hooks
 For the local Cognee API:
 
 ```bash
+npm run cognee -- install
 npm run cognee -- status
-npm run cognee -- start
 ```
+
+Cognee runs as an enabled user-systemd service on `127.0.0.1:8001`; port 8000
+remains reserved for the GitHub MCP container. The tracked service template is
+`systemd/user/cognee-server.service`.
 
 ## Portable secrets
 

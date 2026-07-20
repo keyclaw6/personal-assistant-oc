@@ -17,6 +17,7 @@ import sources  # noqa: E402
 
 
 SIGNAL_HEADER = ("signal_id\tts_detected\tdomain\tleaker_id\tplatform\tpost_url\tpost_ts\t"
+                 "source_post_id\t"
                  "claim\tcall_class\thedged\tmarket_id\tevent_id\tmarket_question\ttoken_id\t"
                  "side\tprice_at_signal\tliquidity_usd\tstatus\tjudge_p\tjudge_conf\tedge\t"
                  "resolved_outcome\tstat_counted\tnote\n")
@@ -81,6 +82,7 @@ class HeartbeatTransactionTests(unittest.TestCase):
             markers = [row for row in added if row.get("status") == heartbeat.POST_COMPLETE]
             self.assertEqual(1, len(markers))
             self.assertEqual("post_id=7", markers[0]["note"])
+            self.assertEqual({"7"}, {row["source_post_id"] for row in added})
             self.assertEqual({f"claim {i}" for i in range(6)},
                              {row["claim"] for row in added if row.get("claim")})
 

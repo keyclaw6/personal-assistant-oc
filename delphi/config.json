@@ -19,7 +19,7 @@
     "orchestrator_hours": 1
   },
   "kickstart": {
-    "active_until": "2026-07-18T00:00:00Z",
+    "active_until": "2026-07-19T00:00:00Z",
     "explorer_max_candidates_per_run": 8
   },
   "call_classes": {
@@ -44,10 +44,9 @@
       "reasoning": "high"
     },
     "judge": {
-      "backend": "http",
-      "model": "anthropic/claude-opus-4.6",
-      "base_url": "https://openrouter.ai/api/v1",
-      "api_key_env": "OPENROUTER_API_KEY",
+      "backend": "codex-cli",
+      "model": "gpt-5.6-luna",
+      "output_schema": "schemas/judge-output.json",
       "reasoning": "high"
     },
     "orchestrator": {
@@ -59,7 +58,11 @@
   "codex_cmd": [
     "codex",
     "exec",
+    "--ephemeral",
+    "--ignore-user-config",
     "--skip-git-repo-check",
+    "-C",
+    "{cwd}",
     "--sandbox",
     "read-only",
     "-m",
@@ -83,6 +86,10 @@
     "x_bearer_env": "X_BEARER_TOKEN",
     "reddit_user_agent": "delphi-paper-trader/0.1 (personal research)",
     "explorer_max_candidates_per_run": 3,
+    "discovery_evidence_budget": 28,
+    "discovery_page_size": 20,
+    "discovery_max_pages_per_source": 5,
+    "discovery_evidence_chars": 600,
     "history_days": 365,
     "history_max_posts": 100
   },

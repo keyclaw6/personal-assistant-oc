@@ -33,12 +33,16 @@ Output JSON only:
 
 Same precision rule as everywhere in Delphi: `match: true` only if the market's
 resolution criteria would genuinely settle the claim; then give `implied_side`
-("YES"/"NO") — the side the leaker's post supports.
+("YES"/"NO") — the side the leaker's post supports. Claims are identified by
+the exact `claim_id` supplied in the request. Return exactly one mapping record
+for every supplied claim ID, in any order; never omit, duplicate, or invent an
+ID. A genuine no-match is an explicit record with `match: false` and empty
+`market_id` and `implied_side` strings.
 
 ```json
-{"mappings": [{"claim_index": 0, "market_id": "...", "match": true, "implied_side": "YES"}]}
+{"mappings": [{"claim_id": "claim-0", "market_id": "...", "match": true, "implied_side": "YES"}, {"claim_id": "claim-1", "market_id": "", "match": false, "implied_side": ""}]}
 ```
 
-Hard rules: JSON only. Uncertain → skip / `match: false`. A false positive here
-wastes a judge call and poisons a scorecard; a false negative costs at most one
-missed paper bet.
+Hard rules: JSON only. Use exactly the four fields shown for every record.
+Uncertain → explicit `match: false`. A false positive here wastes a judge call
+and poisons a scorecard; a false negative costs at most one missed paper bet.
