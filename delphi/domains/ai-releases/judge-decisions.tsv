@@ -1,1 +1,0 @@
-signal_id	domain	market_id	market_question	token_id	side	state	ts_decided	position_id	intended_status	judge_p	judge_conf	edge	quote_price	slippage	entry_price	available_usd	total_equity_usd	kelly_fraction	max_stake_frac	min_edge	judge_min_conf	size_usd	shares	note
